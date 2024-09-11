@@ -6,3 +6,5 @@ package "LeanSearchClient" where
 
 lean_lib «LeanSearchClient» where
   -- add library configuration options here
+
+require proofwidgets from git "https://github.com/leanprover-community/ProofWidgets4"@"v0.0.42"
