@@ -5,6 +5,7 @@ Authors: Siddhartha Gadgil
 -/
 import Lean
 import LeanSearchClient.Basic
+import ProofWidgets
 
 /-!
 # LeanSearchClient
@@ -20,7 +21,7 @@ We provide syntax to make a query and generate `TryThis` options to click or use
 In all cases results are displayed in the Lean Infoview and clicking these replaces the query text. In the cases of a query for tactics only valid tactics are displayed.
 -/
 
-open Lean Meta Elab Tactic Parser Term
+open Lean Meta Elab Tactic Parser Term ProofWidgets Server
 
 def getQueryJson (s: String)(num_results : Nat := 6) : IO <| Array Json := do
   let apiUrl := "https://leansearch.net/api/search"
@@ -78,6 +79,15 @@ def toTacticSuggestions (sr: SearchResult) : Array TryThis.Suggestion :=
         {suggestion := s!"rw [← {sr.name}]" }]
   | none => #[]
 
+open scoped Jsx in
+def toHtml (sr : SearchResult) : TermElabM (Option Html) := do
+  try
+    let resultExpr ← mkConstWithLevelParams sr.name.toName
+    let resultWithInfos ← Widget.ppExprTagged resultExpr
+    return <InteractiveCode fmt={resultWithInfos} />
+  catch e =>
+    pure none
+
 end SearchResult
 
 def getQueryCommandSuggestions (s: String)(num_results : Nat) :
@@ -122,28 +132,37 @@ def checkTactic (target: Expr)(tac: Syntax):
       return none
 
 open Command
+
 syntax (name := leansearch_cmd) "#leansearch" str : command
+open scoped Jsx Json in
 @[command_elab leansearch_cmd] def leanSearchImpl : CommandElab :=
   fun stx => Command.liftTermElabM do
   match stx with
   | `(command| #leansearch $s) =>
     let s := s.getString
     if s.endsWith "." || s.endsWith "?" then
-      let suggestions ← getQueryCommandSuggestions s (← queryNum)
-      TryThis.addSuggestions stx suggestions (header:= "Lean Search Results")
+      let searchResults ← SearchResult.query s (← queryNum)
+      let codeBlocks ← searchResults.filterMapM (liftM <| ·.toHtml)
+      let html : Html := .element "ul" #[] (codeBlocks.map (<li>{·}</li>))
+      Widget.savePanelWidgetInfo (hash := HtmlDisplay.javascriptHash) (stx := stx)
+        (props := do return json% { html : $(← rpcEncode html) })
     else
       logWarning "Lean search query should end with a full stop (period) or a question mark. Note this command sends your query to an external service at https://leansearch.net/."
   | _ => throwUnsupportedSyntax
 
 syntax (name := leansearch_term) "#leansearch" str : term
+open scoped Jsx Json in
 @[term_elab leansearch_term] def leanSearchTermImpl : TermElab :=
   fun stx expectedType? => do
   match stx with
   | `(#leansearch $s) =>
     let s := s.getString
     if s.endsWith "." || s.endsWith "?" then
-      let suggestions ← getQueryTermSuggestions s (← queryNum)
-      TryThis.addSuggestions stx suggestions (header:= "Lean Search Results")
+      let searchResults ← SearchResult.query s (← queryNum)
+      let codeBlocks ← searchResults.filterMapM (liftM <| ·.toHtml)
+      let html : Html := .element "ul" #[] (codeBlocks.map (<li>{·}</li>))
+      Widget.savePanelWidgetInfo (hash := HtmlDisplay.javascriptHash) (stx := stx)
+        (props := do return json% { html : $(← rpcEncode html) })
     else
       logWarning "Lean search query should end with a full stop (period) or a question mark. Note this command sends your query to an external service at https://leansearch.net/."
     defaultTerm expectedType?
