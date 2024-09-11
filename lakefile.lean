@@ -6,7 +6,3 @@ package "LeanSearchClient" where
 
 lean_lib «LeanSearchClient» where
   -- add library configuration options here
-
-@[default_target]
-lean_exe "leansearchclient" where
-  root := `Main
