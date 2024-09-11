@@ -169,7 +169,7 @@ syntax (name := leansearch_tactic) "#leansearch" str : tactic
             | Except.ok stx =>
               let n? ← checkTactic target stx
               return n?.isSome
-            | Except.error e =>
+            | Except.error _ =>
               pure false
           | _ => pure false
         unless sg.isEmpty do
