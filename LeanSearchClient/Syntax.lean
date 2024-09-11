@@ -80,13 +80,16 @@ def toTacticSuggestions (sr: SearchResult) : Array TryThis.Suggestion :=
   | none => #[]
 
 open scoped Jsx in
-def toHtml (sr : SearchResult) : TermElabM (Option Html) := do
+def toHtml (sr : SearchResult) : TermElabM Html := do
   try
     let resultExpr ← mkConstWithLevelParams sr.name.toName
     let resultWithInfos ← Widget.ppExprTagged resultExpr
     return <InteractiveCode fmt={resultWithInfos} />
-  catch e =>
-    pure none
+  catch _ =>
+    if let some url := sr.doc_url? then
+      return <a href={url}>{.text sr.name}</a>
+    else
+      return <span>{.text sr.name}</span>
 
 end SearchResult
 
@@ -142,7 +145,7 @@ open scoped Jsx Json in
     let s := s.getString
     if s.endsWith "." || s.endsWith "?" then
       let searchResults ← SearchResult.query s (← queryNum)
-      let codeBlocks ← searchResults.filterMapM (liftM <| ·.toHtml)
+      let codeBlocks ← searchResults.mapM (liftM <| ·.toHtml)
       let html : Html := .element "ul" #[] (codeBlocks.map (<li>{·}</li>))
       Widget.savePanelWidgetInfo (hash := HtmlDisplay.javascriptHash) (stx := stx)
         (props := do return json% { html : $(← rpcEncode html) })
@@ -159,7 +162,7 @@ open scoped Jsx Json in
     let s := s.getString
     if s.endsWith "." || s.endsWith "?" then
       let searchResults ← SearchResult.query s (← queryNum)
-      let codeBlocks ← searchResults.filterMapM (liftM <| ·.toHtml)
+      let codeBlocks ← searchResults.mapM (liftM <| ·.toHtml)
       let html : Html := .element "ul" #[] (codeBlocks.map (<li>{·}</li>))
       Widget.savePanelWidgetInfo (hash := HtmlDisplay.javascriptHash) (stx := stx)
         (props := do return json% { html : $(← rpcEncode html) })
