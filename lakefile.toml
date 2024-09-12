@@ -1,0 +1,9 @@
+name = "LeanSearchClient"
+testDriver = "LeanSearchClientTest"
+defaultTargets = ["LeanSearchClient"]
+
+[[lean_lib]]
+name = "LeanSearchClient"
+
+[[lean_lib]]
+name = "LeanSearchClientTest"

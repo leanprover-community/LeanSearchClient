@@ -17,13 +17,13 @@ The following are examples of using the leansearch API. The search is triggered 
 ### Query Command
 
 ```lean
-#leansearch "If a natural number n is less than m, then the successor of n is less than the successor of m"
+#leansearch "If a natural number n is less than m, then the successor of n is less than the successor of m."
 ```
 
 ### Query Term
 
 ```lean
-example := #leansearch "If a natural number n is less than m, then the successor of n is less than the successor of m"
+example := #leansearch "If a natural number n is less than m, then the successor of n is less than the successor of m."
 ```
 
 ### Query Tactic
@@ -32,6 +32,6 @@ Note that only valid tactics are displayed.
 
 ```lean
 example : 3 ≤ 5 := by
-  #leansearch "If a natural number n is less than m, then the successor of n is less than the successor of m"
+  #leansearch "If a natural number n is less than m, then the successor of n is less than the successor of m."
   sorry
 ```
