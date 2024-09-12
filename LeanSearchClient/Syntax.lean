@@ -38,12 +38,31 @@ def getQueryJson (s : String) (num_results : Nat := 6) : IO <| Array Json := do
   let js := Json.parse s.stdout |>.toOption |>.get!
   return js.getArr? |>.toOption |>.get!
 
+def getMoogleQueryJson (s : String) (num_results : Nat := 6) : IO <| Array Json := do
+  let apiUrl := "https://www.moogle.ai/api/search"
+  let data := Json.arr
+    #[Json.mkObj [("isFind", false), ("contents", s)]]
+  let s ← IO.Process.output {cmd := "curl", args := #[apiUrl, "-H", "content-type: application/json",  "--data", data.pretty]}
+  match Json.parse s.stdout with
+  | Except.error e =>
+    IO.throwServerError s!"Could not parse JSON from {s.stdout}; error: {e}"
+  | Except.ok js =>
+  let result? := js.getObjValAs?  Json "data"
+  match result? with
+    | Except.ok result =>
+        match result.getArr? with
+        | Except.ok arr => return arr[0:num_results]
+        | Except.error e => IO.throwServerError s!"Could not obtain array from {js}; error: {e}"
+    | _ => IO.throwServerError s!"Could not obtain data from {js}"
+
+
 structure SearchResult where
   name : String
   type? : Option String
   docString? : Option String
   doc_url? : Option String
   kind? : Option String
+  deriving Repr
 
 def queryNum : CoreM Nat := do
   return leansearch.queries.get (← getOptions)
@@ -61,10 +80,35 @@ def ofJson? (js : Json) : Option SearchResult :=
       some {name := name, type? := type?, docString? := doc?, doc_url? := docurl?, kind? := kind?}
   | _ => none
 
+def ofMoogleJson? (js : Json) : MetaM <| Option SearchResult :=
+  match js.getObjValAs? String "declarationName" with
+  | Except.ok name => do
+      let type? ←
+        try
+          let info ←  getConstInfo name.toName
+          let fmt ← PrettyPrinter.ppExpr info.type
+          pure <| some fmt.pretty
+        catch _ =>
+          pure none
+      let doc? := js.getObjValAs? String "declarationDocString" |>.toOption
+      let doc? := doc?.filter fun s => s != ""
+      let docurl? := none
+      let kind? := js.getObjValAs? String "declarationType" |>.toOption
+      return some {name := name, type? := type?, docString? := doc?, doc_url? := docurl?, kind? := kind?}
+  | _ => return none
+
 def query (s : String) (num_results : Nat) :
     IO <| Array SearchResult := do
   let jsArr ← getQueryJson s num_results
   return jsArr.filterMap ofJson?
+
+def queryMoogle (s : String) (num_results : Nat) :
+    MetaM <| Array SearchResult := do
+  let jsArr ← getMoogleQueryJson s num_results
+  jsArr.filterMapM ofMoogleJson?
+
+-- #eval queryMoogle "There are infinitely many primes" 12
+
 
 def toCommandSuggestion (sr : SearchResult) : TryThis.Suggestion :=
   let data := match sr.docString? with
@@ -106,6 +150,25 @@ def getQueryTacticSuggestionGroups (s : String) (num_results : Nat) :
       | none => sr.name
     (fullName, sr.toTacticSuggestions)
 
+def getMoogleQueryCommandSuggestions (s: String)(num_results : Nat) :
+  MetaM <| Array TryThis.Suggestion := do
+    let searchResults ←  SearchResult.queryMoogle s num_results
+    return searchResults.map SearchResult.toCommandSuggestion
+
+def getMoogleQueryTermSuggestions (s: String)(num_results : Nat) :
+  MetaM <| Array TryThis.Suggestion := do
+    let searchResults ←  SearchResult.queryMoogle s num_results
+    return searchResults.map SearchResult.toTermSuggestion
+
+def getMoogleQueryTacticSuggestionGroups (s: String)(num_results : Nat) :
+  MetaM <| Array (String ×  Array TryThis.Suggestion) := do
+    let searchResults ←  SearchResult.queryMoogle s num_results
+    return searchResults.map fun sr =>
+      let fullName := match sr.type? with
+        | some type => s!"{sr.name} (type: {type})"
+        | none => sr.name
+      (fullName, sr.toTacticSuggestions)
+
 def defaultTerm (expectedType? : Option Expr) : MetaM Expr := do
   match expectedType? with
   | some type =>
@@ -131,6 +194,10 @@ def checkTactic (target : Expr) (tac : Syntax) :
 def incompleteQuery : String :=
   "#leansearch query should end with a `.` or `?`.\n\
    Note this command sends your query to an external service at https://leansearch.net/."
+
+def incompleteMoogleQuery : String :=
+  "#moogle query should end with a `.` or `?`.\n\
+   Note this command sends your query to an external service at https://www.moogle.ai/api/search."
 
 open Command
 
@@ -191,4 +258,63 @@ syntax (name := leansearch_tactic) "#leansearch" str : tactic
           TryThis.addSuggestions stx sg (header := s!"From: {name}")
     else
       logWarning incompleteQuery
+  | _ => throwUnsupportedSyntax
+
+syntax (name := moogle_cmd) "#moogle" str : command
+
+@[command_elab moogle_cmd] def moogleSearchCommandImpl : CommandElab :=
+  fun stx => Command.liftTermElabM do
+  match stx with
+  | `(command| #moogle $s) =>
+    let s := s.getString
+    if s.endsWith "." || s.endsWith "?" then
+      let suggestions ← getMoogleQueryCommandSuggestions s (← queryNum)
+      TryThis.addSuggestions stx suggestions (header := "Moogle Results")
+    else
+      logWarning incompleteMoogleQuery
+  | _ => throwUnsupportedSyntax
+
+syntax (name := moogle_term) "#moogle" str : term
+
+@[term_elab moogle_term] def moogleSearchTermImpl : TermElab :=
+  fun stx expectedType? => do
+  match stx with
+  | `(#moogle $s) =>
+    let s := s.getString
+    if s.endsWith "." || s.endsWith "?" then
+      let suggestions ← getMoogleQueryTermSuggestions s (← queryNum)
+      TryThis.addSuggestions stx suggestions (header := "Moogle Results")
+    else
+      logWarning incompleteMoogleQuery
+    defaultTerm expectedType?
+  | _ => throwUnsupportedSyntax
+
+syntax (name := moogle_tactic) "#moogle" str : tactic
+
+@[tactic moogle_tactic] def moogleSearchTacticImpl : Tactic :=
+  fun stx => withMainContext do
+  match stx with
+  | `(tactic|#moogle $s) =>
+    let s := s.getString
+    if s.endsWith "." || s.endsWith "?" then
+      let target ← getMainTarget
+      let suggestionGroups ←
+          getMoogleQueryTacticSuggestionGroups s (← queryNum)
+      for (name, sg) in suggestionGroups do
+        let sg ←  sg.filterM fun s =>
+          let sugTxt := s.suggestion
+          match sugTxt with
+          | .string s => do
+            let stx? := runParserCategory (← getEnv) `tactic s
+            match stx? with
+            | Except.ok stx =>
+              let n? ← checkTactic target stx
+              return n?.isSome
+            | Except.error _ =>
+              pure false
+          | _ => pure false
+        unless sg.isEmpty do
+          TryThis.addSuggestions stx sg (header := s!"From: {name}")
+    else
+      logWarning incompleteMoogleQuery
   | _ => throwUnsupportedSyntax
