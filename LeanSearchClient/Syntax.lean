@@ -116,7 +116,6 @@ def queryMoogle (s : String) (num_results : Nat) :
   let jsArr ← getMoogleQueryJson s num_results
   jsArr.filterMapM ofMoogleJson?
 
--- #eval queryMoogle "There are infinitely many primes" 12
 
 
 def toCommandSuggestion (sr : SearchResult) : TryThis.Suggestion :=
@@ -200,13 +199,12 @@ def checkTactic (target : Expr) (tac : Syntax) :
   catch _ =>
     return none
 
-def incompleteLeanSearchQuery : String :=
-  "#leansearch query should end with a `.` or `?`.\n\
-   Note this command sends your query to an external service at https://leansearch.net/."
+def incompleteSearchQuery (name url : String) : String :=
+  s!"{name} query should end with a `.` or `?`.\n\
+   Note this command sends your query to an external service at {url}."
 
-def incompleteMoogleQuery : String :=
-  "#moogle query should end with a `.` or `?`.\n\
-   Note this command sends your query to an external service at https://www.moogle.ai/api/search."
+
+
 
 open Command
 
@@ -221,7 +219,7 @@ syntax (name := leansearch_cmd) "#leansearch" str : command
       let suggestions ← getLeanSearchQueryCommandSuggestions s (← leansearchQueryNum)
       TryThis.addSuggestions stx suggestions (header := "Lean Search Results")
     else
-      logWarning incompleteLeanSearchQuery
+      logWarning <| incompleteSearchQuery "#leansearch" "https://leansearch.net/"
   | _ => throwUnsupportedSyntax
 
 syntax (name := leansearch_term) "#leansearch" str : term
@@ -235,7 +233,7 @@ syntax (name := leansearch_term) "#leansearch" str : term
       let suggestions ← getLeanSearchQueryTermSuggestions s (← leansearchQueryNum)
       TryThis.addSuggestions stx suggestions (header := "Lean Search Results")
     else
-      logWarning incompleteLeanSearchQuery
+      logWarning <| incompleteSearchQuery "#leansearch" "https://leansearch.net/"
     defaultTerm expectedType?
   | _ => throwUnsupportedSyntax
 
@@ -266,7 +264,7 @@ syntax (name := leansearch_tactic) "#leansearch" str : tactic
         unless sg.isEmpty do
           TryThis.addSuggestions stx sg (header := s!"From: {name}")
     else
-      logWarning incompleteLeanSearchQuery
+      logWarning <| incompleteSearchQuery "#leansearch" "https://leansearch.net/"
   | _ => throwUnsupportedSyntax
 
 syntax (name := moogle_cmd) "#moogle" str : command
@@ -280,7 +278,7 @@ syntax (name := moogle_cmd) "#moogle" str : command
       let suggestions ← getMoogleQueryCommandSuggestions s (← moogleQueryNum)
       TryThis.addSuggestions stx suggestions (header := "Moogle Results")
     else
-      logWarning incompleteMoogleQuery
+      logWarning <| incompleteSearchQuery "#moogle" "https://www.moogle.ai/api/search"
   | _ => throwUnsupportedSyntax
 
 syntax (name := moogle_term) "#moogle" str : term
@@ -294,7 +292,7 @@ syntax (name := moogle_term) "#moogle" str : term
       let suggestions ← getMoogleQueryTermSuggestions s (← moogleQueryNum)
       TryThis.addSuggestions stx suggestions (header := "Moogle Results")
     else
-      logWarning incompleteMoogleQuery
+      logWarning <| incompleteSearchQuery "#moogle" "https://www.moogle.ai/api/search"
     defaultTerm expectedType?
   | _ => throwUnsupportedSyntax
 
@@ -325,5 +323,5 @@ syntax (name := moogle_tactic) "#moogle" str : tactic
         unless sg.isEmpty do
           TryThis.addSuggestions stx sg (header := s!"From: {name}")
     else
-      logWarning incompleteMoogleQuery
+      logWarning <| incompleteSearchQuery "#moogle" "https://www.moogle.ai/api/search"
   | _ => throwUnsupportedSyntax
