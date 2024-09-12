@@ -3,7 +3,7 @@ import LeanSearchClient.Syntax
 /-!
 # Moogle Examples
 
-Examples of using the leansearch API. The search is triggered when the sentence ends with a full stop (period) or a question mark.
+Examples of using the Moogle API. The search is triggered when the sentence ends with a full stop (period) or a question mark.
 -/
 
 /--
@@ -20,7 +20,7 @@ Note this command sends your query to an external service at https://www.moogle.
 #guard_msgs in
 example := #moogle "If a natural number n is less than m, then the successor of n is less than the successor of m"
 
-set_option leansearch.queries 1
+set_option moogle.queries 1
 
 /--
 info: From: Nat.lt (type: Nat → Nat → Prop)

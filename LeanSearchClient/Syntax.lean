@@ -11,16 +11,23 @@ import LeanSearchClient.Basic
 # LeanSearchClient
 
 In this file, we provide syntax for search using the [leansearch API](https://leansearch.net/)
+and the [Moogle API](https://www.moogle.ai/api/search).
 from within Lean. It allows you to search for Lean tactics and theorems using natural language.
 
 We provide syntax to make a query and generate `TryThis` options to click or
 use a code action to use the results.
 
-The queries are of three forms:
+The queries are of three forms. For leansearch these are:
 
 * `Command` syntax: `#leansearch "search query"` as a command.
 * `Term` syntax: `#leansearch "search query"` as a term.
 * `Tactic` syntax: `#leansearch "search query"` as a tactic.
+
+The corresponding syntax for Moogle is:
+
+* `Command` syntax: `#moogle "search query"` as a command.
+* `Term` syntax: `#moogle "search query"` as a term.
+* `Tactic` syntax: `#moogle "search query"` as a tactic.
 
 In all cases results are displayed in the Lean Infoview and clicking these replaces the query text.
 In the cases of a query for tactics only valid tactics are displayed.
@@ -67,6 +74,8 @@ structure SearchResult where
 def queryNum : CoreM Nat := do
   return leansearch.queries.get (← getOptions)
 
+def moogleQueryNum : CoreM Nat := do
+  return moogle.queries.get (← getOptions)
 namespace SearchResult
 
 def ofJson? (js : Json) : Option SearchResult :=
@@ -268,7 +277,7 @@ syntax (name := moogle_cmd) "#moogle" str : command
   | `(command| #moogle $s) =>
     let s := s.getString
     if s.endsWith "." || s.endsWith "?" then
-      let suggestions ← getMoogleQueryCommandSuggestions s (← queryNum)
+      let suggestions ← getMoogleQueryCommandSuggestions s (← moogleQueryNum)
       TryThis.addSuggestions stx suggestions (header := "Moogle Results")
     else
       logWarning incompleteMoogleQuery
@@ -282,7 +291,7 @@ syntax (name := moogle_term) "#moogle" str : term
   | `(#moogle $s) =>
     let s := s.getString
     if s.endsWith "." || s.endsWith "?" then
-      let suggestions ← getMoogleQueryTermSuggestions s (← queryNum)
+      let suggestions ← getMoogleQueryTermSuggestions s (← moogleQueryNum)
       TryThis.addSuggestions stx suggestions (header := "Moogle Results")
     else
       logWarning incompleteMoogleQuery
@@ -299,7 +308,7 @@ syntax (name := moogle_tactic) "#moogle" str : tactic
     if s.endsWith "." || s.endsWith "?" then
       let target ← getMainTarget
       let suggestionGroups ←
-          getMoogleQueryTacticSuggestionGroups s (← queryNum)
+          getMoogleQueryTacticSuggestionGroups s (← moogleQueryNum)
       for (name, sg) in suggestionGroups do
         let sg ←  sg.filterM fun s =>
           let sugTxt := s.suggestion
