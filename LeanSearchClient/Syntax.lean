@@ -71,11 +71,6 @@ structure SearchResult where
   kind? : Option String
   deriving Repr
 
-def leansearchQueryNum : CoreM Nat := do
-  return leansearch.queries.get (← getOptions)
-
-def moogleQueryNum : CoreM Nat := do
-  return moogle.queries.get (← getOptions)
 namespace SearchResult
 
 def ofLeanSearchJson? (js : Json) : Option SearchResult :=
@@ -106,18 +101,6 @@ def ofMoogleJson? (js : Json) : MetaM <| Option SearchResult :=
       return some {name := name, type? := type?, docString? := doc?, doc_url? := docurl?, kind? := kind?}
   | _ => return none
 
-def queryLeanSearch (s : String) (num_results : Nat) :
-    IO <| Array SearchResult := do
-  let jsArr ← getLeanSearchQueryJson s num_results
-  return jsArr.filterMap ofLeanSearchJson?
-
-def queryMoogle (s : String) (num_results : Nat) :
-    MetaM <| Array SearchResult := do
-  let jsArr ← getMoogleQueryJson s num_results
-  jsArr.filterMapM ofMoogleJson?
-
-
-
 def toCommandSuggestion (sr : SearchResult) : TryThis.Suggestion :=
   let data := match sr.docString? with
     | some doc => s!"{doc}\n"
@@ -139,43 +122,16 @@ def toTacticSuggestions (sr : SearchResult) : Array TryThis.Suggestion :=
 
 end SearchResult
 
-def getLeanSearchQueryCommandSuggestions (s : String) (num_results : Nat) :
-    IO <| Array TryThis.Suggestion := do
-  let searchResults ←  SearchResult.queryLeanSearch s num_results
-  return searchResults.map SearchResult.toCommandSuggestion
 
-def getLeanSearchQueryTermSuggestions (s : String) (num_results : Nat) :
-    IO <| Array TryThis.Suggestion := do
-  let searchResults ←  SearchResult.queryLeanSearch s num_results
-  return searchResults.map SearchResult.toTermSuggestion
+def queryLeanSearch (s : String) (num_results : Nat) :
+    MetaM <| Array SearchResult := do
+  let jsArr ← getLeanSearchQueryJson s num_results
+  return jsArr.filterMap SearchResult.ofLeanSearchJson?
 
-def getLeanSearchQueryTacticSuggestionGroups (s : String) (num_results : Nat) :
-    IO <| Array (String ×  Array TryThis.Suggestion) := do
-  let searchResults ←  SearchResult.queryLeanSearch s num_results
-  return searchResults.map fun sr =>
-    let fullName := match sr.type? with
-      | some type => s!"{sr.name} (type: {type})"
-      | none => sr.name
-    (fullName, sr.toTacticSuggestions)
-
-def getMoogleQueryCommandSuggestions (s: String)(num_results : Nat) :
-  MetaM <| Array TryThis.Suggestion := do
-    let searchResults ←  SearchResult.queryMoogle s num_results
-    return searchResults.map SearchResult.toCommandSuggestion
-
-def getMoogleQueryTermSuggestions (s: String)(num_results : Nat) :
-  MetaM <| Array TryThis.Suggestion := do
-    let searchResults ←  SearchResult.queryMoogle s num_results
-    return searchResults.map SearchResult.toTermSuggestion
-
-def getMoogleQueryTacticSuggestionGroups (s: String)(num_results : Nat) :
-  MetaM <| Array (String ×  Array TryThis.Suggestion) := do
-    let searchResults ←  SearchResult.queryMoogle s num_results
-    return searchResults.map fun sr =>
-      let fullName := match sr.type? with
-        | some type => s!"{sr.name} (type: {type})"
-        | none => sr.name
-      (fullName, sr.toTacticSuggestions)
+def queryMoogle (s : String) (num_results : Nat) :
+    MetaM <| Array SearchResult := do
+  let jsArr ← getMoogleQueryJson s num_results
+  jsArr.filterMapM SearchResult.ofMoogleJson?
 
 def defaultTerm (expectedType? : Option Expr) : MetaM Expr := do
   match expectedType? with
@@ -199,27 +155,99 @@ def checkTactic (target : Expr) (tac : Syntax) :
   catch _ =>
     return none
 
-def incompleteSearchQuery (name url : String) : String :=
-  s!"{name} query should end with a `.` or `?`.\n\
-   Note this command sends your query to an external service at {url}."
+structure SearchServer where
+  name : String
+  url : String
+  cmd: String
+  query : String → Nat → MetaM  (Array SearchResult)
+  queryNum : CoreM Nat
 
+def leanSearchServer : SearchServer :=
+  {name := "LeanSearch", cmd := "#leansearch", url := "https://leansearch.net/",
+   query := queryLeanSearch, queryNum := return leansearch.queries.get (← getOptions)}
 
+def moogleServer : SearchServer :=
+  {name := "Moogle", cmd := "#moogle", url := "https://www.moogle.ai/api/search",
+   query := queryMoogle, queryNum := return moogle.queries.get (← getOptions)}
 
+namespace SearchServer
+
+def getCommandSuggestions (ss : SearchServer) (s : String)(num_results : Nat) :
+    MetaM (Array TryThis.Suggestion) := do
+  let suggestions ← ss.query s num_results
+  return suggestions.map SearchResult.toCommandSuggestion
+
+def getTermSuggestions (ss : SearchServer) (s : String)(num_results : Nat) :
+    MetaM (Array TryThis.Suggestion) := do
+  let suggestions ← ss.query s num_results
+  return suggestions.map SearchResult.toTermSuggestion
+
+def getTacticSuggestionGroups (ss : SearchServer) (s : String)(num_results : Nat) :
+    MetaM (Array (String ×  Array TryThis.Suggestion)) := do
+  let suggestions ← ss.query s num_results
+  return suggestions.map fun sr =>
+    let fullName := match sr.type? with
+      | some type => s!"{sr.name} (type: {type})"
+      | none => sr.name
+    (fullName, sr.toTacticSuggestions)
+
+def incompleteSearchQuery (ss : SearchServer) : String :=
+  s!"{ss.cmd} query should end with a `.` or `?`.\n\
+   Note this command sends your query to an external service at {ss.url}."
+
+open Command
+def searchCommandSuggestions (ss: SearchServer) (stx: Syntax) (s: TSyntax `str) : CommandElabM Unit := Command.liftTermElabM do
+    let s := s.getString
+    if s.endsWith "." || s.endsWith "?" then
+      let suggestions ← ss.getCommandSuggestions s (← ss.queryNum)
+      TryThis.addSuggestions stx suggestions (header := s!"{ss.name} Search Results")
+    else
+      logWarning <| ss.incompleteSearchQuery
+
+def searchTermSuggestions (ss: SearchServer) (stx: Syntax)
+    (s: TSyntax `str)  : TermElabM Unit := do
+    let s := s.getString
+    if s.endsWith "." || s.endsWith "?" then
+      let suggestions ← ss.getTermSuggestions s (← ss.queryNum)
+      TryThis.addSuggestions stx suggestions (header := s!"{ss.name} Search Results")
+    else
+      logWarning <| ss.incompleteSearchQuery
+
+def searchTacticSuggestions (ss: SearchServer) (stx: Syntax) (s: TSyntax `str) : TacticM Unit := do
+    let s := s.getString
+    if s.endsWith "." || s.endsWith "?" then
+      let target ← getMainTarget
+      let suggestionGroups ←
+          ss.getTacticSuggestionGroups s (← ss.queryNum)
+      for (name, sg) in suggestionGroups do
+        let sg ←  sg.filterM fun s =>
+          let sugTxt := s.suggestion
+          match sugTxt with
+          | .string s => do
+            let stx? := runParserCategory (← getEnv) `tactic s
+            match stx? with
+            | Except.ok stx =>
+              let n? ← checkTactic target stx
+              return n?.isSome
+            | Except.error _ =>
+              pure false
+          | _ => pure false
+        unless sg.isEmpty do
+          TryThis.addSuggestions stx sg (header := s!"From: {name}")
+    else
+      logWarning <| ss.incompleteSearchQuery
+
+end SearchServer
 
 open Command
 
 syntax (name := leansearch_cmd) "#leansearch" str : command
 
 @[command_elab leansearch_cmd] def leanSearchCommandImpl : CommandElab :=
-  fun stx => Command.liftTermElabM do
+  fun stx =>
   match stx with
   | `(command| #leansearch $s) =>
-    let s := s.getString
-    if s.endsWith "." || s.endsWith "?" then
-      let suggestions ← getLeanSearchQueryCommandSuggestions s (← leansearchQueryNum)
-      TryThis.addSuggestions stx suggestions (header := "Lean Search Results")
-    else
-      logWarning <| incompleteSearchQuery "#leansearch" "https://leansearch.net/"
+    leanSearchServer.searchCommandSuggestions  stx s
   | _ => throwUnsupportedSyntax
 
 syntax (name := leansearch_term) "#leansearch" str : term
@@ -228,12 +256,7 @@ syntax (name := leansearch_term) "#leansearch" str : term
   fun stx expectedType? => do
   match stx with
   | `(#leansearch $s) =>
-    let s := s.getString
-    if s.endsWith "." || s.endsWith "?" then
-      let suggestions ← getLeanSearchQueryTermSuggestions s (← leansearchQueryNum)
-      TryThis.addSuggestions stx suggestions (header := "Lean Search Results")
-    else
-      logWarning <| incompleteSearchQuery "#leansearch" "https://leansearch.net/"
+    leanSearchServer.searchTermSuggestions stx s
     defaultTerm expectedType?
   | _ => throwUnsupportedSyntax
 
@@ -243,42 +266,16 @@ syntax (name := leansearch_tactic) "#leansearch" str : tactic
   fun stx => withMainContext do
   match stx with
   | `(tactic|#leansearch $s) =>
-    let s := s.getString
-    if s.endsWith "." || s.endsWith "?" then
-      let target ← getMainTarget
-      let suggestionGroups ←
-          getLeanSearchQueryTacticSuggestionGroups s (← leansearchQueryNum)
-      for (name, sg) in suggestionGroups do
-        let sg ←  sg.filterM fun s =>
-          let sugTxt := s.suggestion
-          match sugTxt with
-          | .string s => do
-            let stx? := runParserCategory (← getEnv) `tactic s
-            match stx? with
-            | Except.ok stx =>
-              let n? ← checkTactic target stx
-              return n?.isSome
-            | Except.error _ =>
-              pure false
-          | _ => pure false
-        unless sg.isEmpty do
-          TryThis.addSuggestions stx sg (header := s!"From: {name}")
-    else
-      logWarning <| incompleteSearchQuery "#leansearch" "https://leansearch.net/"
+    leanSearchServer.searchTacticSuggestions stx s
   | _ => throwUnsupportedSyntax
 
 syntax (name := moogle_cmd) "#moogle" str : command
 
 @[command_elab moogle_cmd] def moogleCommandImpl : CommandElab :=
-  fun stx => Command.liftTermElabM do
+  fun stx =>
   match stx with
   | `(command| #moogle $s) =>
-    let s := s.getString
-    if s.endsWith "." || s.endsWith "?" then
-      let suggestions ← getMoogleQueryCommandSuggestions s (← moogleQueryNum)
-      TryThis.addSuggestions stx suggestions (header := "Moogle Results")
-    else
-      logWarning <| incompleteSearchQuery "#moogle" "https://www.moogle.ai/api/search"
+    moogleServer.searchCommandSuggestions stx s
   | _ => throwUnsupportedSyntax
 
 syntax (name := moogle_term) "#moogle" str : term
@@ -287,12 +284,7 @@ syntax (name := moogle_term) "#moogle" str : term
   fun stx expectedType? => do
   match stx with
   | `(#moogle $s) =>
-    let s := s.getString
-    if s.endsWith "." || s.endsWith "?" then
-      let suggestions ← getMoogleQueryTermSuggestions s (← moogleQueryNum)
-      TryThis.addSuggestions stx suggestions (header := "Moogle Results")
-    else
-      logWarning <| incompleteSearchQuery "#moogle" "https://www.moogle.ai/api/search"
+    moogleServer.searchTermSuggestions stx s
     defaultTerm expectedType?
   | _ => throwUnsupportedSyntax
 
@@ -302,26 +294,5 @@ syntax (name := moogle_tactic) "#moogle" str : tactic
   fun stx => withMainContext do
   match stx with
   | `(tactic|#moogle $s) =>
-    let s := s.getString
-    if s.endsWith "." || s.endsWith "?" then
-      let target ← getMainTarget
-      let suggestionGroups ←
-          getMoogleQueryTacticSuggestionGroups s (← moogleQueryNum)
-      for (name, sg) in suggestionGroups do
-        let sg ←  sg.filterM fun s =>
-          let sugTxt := s.suggestion
-          match sugTxt with
-          | .string s => do
-            let stx? := runParserCategory (← getEnv) `tactic s
-            match stx? with
-            | Except.ok stx =>
-              let n? ← checkTactic target stx
-              return n?.isSome
-            | Except.error _ =>
-              pure false
-          | _ => pure false
-        unless sg.isEmpty do
-          TryThis.addSuggestions stx sg (header := s!"From: {name}")
-    else
-      logWarning <| incompleteSearchQuery "#moogle" "https://www.moogle.ai/api/search"
+    moogleServer.searchTacticSuggestions stx s
   | _ => throwUnsupportedSyntax
