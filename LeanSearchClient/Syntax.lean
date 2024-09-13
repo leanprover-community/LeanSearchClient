@@ -39,7 +39,7 @@ open Lean Meta Elab Tactic Parser Term
 
 def getLeanSearchQueryJson (s : String) (num_results : Nat := 6) : IO <| Array Json := do
   let apiUrl := "https://leansearch.net/api/search"
-  let s' := s.replace " " "%20"
+  let s' := System.Uri.escapeUri s
   let q := apiUrl ++ s!"?query={s'}&num_results={num_results}"
   let s ← IO.Process.output {cmd := "curl", args := #["-X", "GET", q]}
   let js := Json.parse s.stdout |>.toOption |>.get!
@@ -62,6 +62,22 @@ def getMoogleQueryJson (s : String) (num_results : Nat := 6) : IO <| Array Json 
         | Except.error e => IO.throwServerError s!"Could not obtain array from {js}; error: {e}"
     | _ => IO.throwServerError s!"Could not obtain data from {js}"
 
+def getLoogleQueryJson (s : String) (num_results : Nat := 6) : IO <| Array Json := do
+  let apiUrl := "https://loogle.lean-lang.org/json"
+  let s' := System.Uri.escapeUri (s.dropRight 1)
+  let q := apiUrl ++ s!"?q={s'}"
+  let s ← IO.Process.output {cmd := "curl", args := #["-X", "GET", q]}
+  match Json.parse s.stdout with
+  | Except.error e =>
+    IO.throwServerError s!"Could not parse JSON from {s.stdout}; error: {e}"
+  | Except.ok js =>
+  let result? := js.getObjValAs?  Json "hits"
+  match result? with
+    | Except.ok result =>
+        match result.getArr? with
+        | Except.ok arr => return arr[0:num_results]
+        | Except.error e => IO.throwServerError s!"Could not obtain array from {js}; error: {e}, query :{s'}"
+    | _ => IO.throwServerError s!"Could not obtain data from {js}"
 
 structure SearchResult where
   name : String
@@ -96,10 +112,18 @@ def ofMoogleJson? (js : Json) : MetaM <| Option SearchResult :=
           pure none
       let doc? := js.getObjValAs? String "declarationDocString" |>.toOption
       let doc? := doc?.filter fun s => s != ""
-      let docurl? := none
       let kind? := js.getObjValAs? String "declarationType" |>.toOption
-      return some {name := name, type? := type?, docString? := doc?, doc_url? := docurl?, kind? := kind?}
+      return some {name := name, type? := type?, docString? := doc?, doc_url? := none, kind? := kind?}
   | _ => return none
+
+def ofLoogleJson? (js : Json) : Option SearchResult :=
+  match js.getObjValAs? String "name" with
+  | Except.ok name =>
+      let type? := js.getObjValAs? String "type" |>.toOption
+      let doc? := js.getObjValAs? String "doc" |>.toOption
+      let doc? := doc?.filter fun s => s != ""
+      some {name := name, type? := type?, docString? := doc?, doc_url? := none, kind? := none}
+  | _ => none
 
 def toCommandSuggestion (sr : SearchResult) : TryThis.Suggestion :=
   let data := match sr.docString? with
@@ -132,6 +156,14 @@ def queryMoogle (s : String) (num_results : Nat) :
     MetaM <| Array SearchResult := do
   let jsArr ← getMoogleQueryJson s num_results
   jsArr.filterMapM SearchResult.ofMoogleJson?
+
+def queryLoogle (s : String) (num_results : Nat) :
+    MetaM <| Array SearchResult := do
+  try
+    let jsArr ← getLoogleQueryJson s num_results
+    return jsArr.filterMap SearchResult.ofLoogleJson?
+  catch _ =>
+    return #[]
 
 def defaultTerm (expectedType? : Option Expr) : MetaM Expr := do
   match expectedType? with
@@ -169,6 +201,10 @@ def leanSearchServer : SearchServer :=
 def moogleServer : SearchServer :=
   {name := "Moogle", cmd := "#moogle", url := "https://www.moogle.ai/api/search",
    query := queryMoogle, queryNum := return moogle.queries.get (← getOptions)}
+
+def loogleServer : SearchServer :=
+  {name := "Loogle", cmd := "#loogle", url := "https://loogle.lean-lang.org/json",
+   query := queryLoogle, queryNum := return loogle.queries.get (← getOptions)}
 
 instance : Inhabited SearchServer := ⟨leanSearchServer⟩
 
@@ -247,6 +283,7 @@ declare_syntax_cat search_cmd
 
 syntax "#leansearch" : search_cmd
 syntax "#moogle" : search_cmd
+syntax "#loogle" : search_cmd
 
 syntax (name := search_cmd) search_cmd str : command
 
@@ -254,6 +291,7 @@ def getSearchServer (sc : Syntax) : SearchServer :=
   match sc with
   | `(search_cmd| #leansearch) => leanSearchServer
   | `(search_cmd| #moogle) => moogleServer
+  | `(search_cmd| #loogle) => loogleServer
   | _ => panic! "unsupported search command"
 
 @[command_elab search_cmd] def searchCommandImpl : CommandElab :=
