@@ -156,10 +156,47 @@ syntax (name := loogle_cmd) "#loogle" str "go" : command
       | none => pure ()
   | _ => throwUnsupportedSyntax
 
-#loogle "List ?a → ?b" go
+-- #loogle "List ?a → ?b" go
 
-#loogle "nonsense" go
+-- #loogle "nonsense" go
 
-#loogle "?a → ?b" go
+-- #loogle "?a → ?b" go
+
+-- #loogle "sin" go
+
+
+syntax (name := loogle_term) "#loogle" str "go" : term
+@[term_elab loogle_term] def loogleTermImpl : TermElab :=
+    fun stx expectedType? => do
+  match stx with
+  | `(#loogle $s go) =>
+    let s := s.getString
+    let result ← getLoogleQueryJson s
+    match result with
+    | LoogleResult.success xs =>
+      let suggestions := xs.map SearchResult.toTermSuggestion
+      if suggestions.isEmpty then
+        logWarning "Loogle search returned no results"
+        logInfo loogleUsage
+      else
+        TryThis.addSuggestions stx suggestions (header := s!"Loogle Search Results")
+
+    | LoogleResult.failure error suggestions? =>
+      logWarning s!"Loogle search failed with error: {error}"
+      logInfo loogleUsage
+      match suggestions? with
+      | some suggestions =>
+        let suggestions : List TryThis.Suggestion :=
+          suggestions.map fun s =>
+            let s := s.replace "\"" "\\\""
+            {suggestion := .string s!"#loogle \"{s}\" go"}
+        unless suggestions.isEmpty do
+          TryThis.addSuggestions stx suggestions.toArray (header := s!"Did you maybe mean")
+      | none => pure ()
+    defaultTerm expectedType?
+  | _ => throwUnsupportedSyntax
+
+
+-- example := #loogle "List ?a → ?b" go
 
 end LeanSearchClient
