@@ -16,22 +16,50 @@ The following are examples of using the leansearch API. The search is triggered 
 
 ### Query Command
 
+For `leansearch`:
+
 ```lean
 #leansearch "If a natural number n is less than m, then the successor of n is less than the successor of m."
 ```
 
+For `moogle`:
+
+```lean
+#moogle "If a natural number n is less than m, then the successor of n is less than the successor of m."
+```
+
+
 ### Query Term
+
+For `leansearch`:
 
 ```lean
 example := #leansearch "If a natural number n is less than m, then the successor of n is less than the successor of m."
 ```
 
+For `moogle`:
+
+```lean
+example := #moogle "If a natural number n is less than m, then the successor of n is less than the successor of m."
+```
+
+
 ### Query Tactic
 
 Note that only valid tactics are displayed.
 
+For `leansearch`:
+
 ```lean
 example : 3 ≤ 5 := by
   #leansearch "If a natural number n is less than m, then the successor of n is less than the successor of m."
+  sorry
+```
+
+For `moogle`:
+
+```lean
+example : 3 ≤ 5 := by
+  #moogle "If a natural number n is less than m, then the successor of n is less than the successor of m."
   sorry
 ```
