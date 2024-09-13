@@ -126,13 +126,23 @@ If you pass more than one such search filter, separated by commas Loogle will re
 🔍 Real.sin, \"two\", tsum, _ * _, _ ^ _, |- _ < _ → _
 woould find all lemmas which mention the constants Real.sin and tsum, have \"two\" as a substring of the lemma name, include a product and a power somewhere in the type, and have a hypothesis of the form _ < _ (if there were any such lemmas). Metavariables (?a) are assigned independently in each filter."
 
+/-- The turnstyle uesd bin `#find`, unicode or ascii allowed -/
+syntax turnstyle := patternIgnore("⊢ " <|> "|- ")
+/-- a single `#find` filter. The `term` can also be an ident or a strlit,
+these are distinguished in `parseFindFilters` -/
+syntax loogle_filter := (turnstyle term) <|> term
+
+/-- The argument to `#find`, a list of filters -/
+syntax loogle_filters := loogle_filter,*
+
 open Command
-syntax (name := loogle_cmd) "#loogle" str "go" : command
+syntax (name := loogle_cmd) "#loogle" loogle_filters "go" : command
 @[command_elab loogle_cmd] def loogleCmdImpl : CommandElab := fun stx =>
   Command.liftTermElabM do
   match stx with
-  | `(command| #loogle $s go) =>
-    let s := s.getString
+  | `(command| #loogle $args:loogle_filters go) =>
+    let s := (← PrettyPrinter.ppCategory ``loogle_filters args).pretty
+    logInfo s
     let result ← getLoogleQueryJson s
     match result with
     | LoogleResult.success xs =>
@@ -149,28 +159,27 @@ syntax (name := loogle_cmd) "#loogle" str "go" : command
       | some suggestions =>
         let suggestions : List TryThis.Suggestion :=
           suggestions.map fun s =>
-            let s := s.replace "\"" "\\\""
             {suggestion := .string s!"#loogle \"{s}\" go"}
         unless suggestions.isEmpty do
           TryThis.addSuggestions stx suggestions.toArray (header := s!"Did you maybe mean")
       | none => pure ()
   | _ => throwUnsupportedSyntax
 
--- #loogle "List ?a → ?b" go
+-- #loogle List ?a → ?b go
 
--- #loogle "nonsense" go
+-- #loogle nonsense go
 
--- #loogle "?a → ?b" go
+-- #loogle ?a → ?b go
 
--- #loogle "sin" go
+-- #loogle sin go
 
 
-syntax (name := loogle_term) "#loogle" str "go" : term
+syntax (name := loogle_term) "#loogle" loogle_filters "go" : term
 @[term_elab loogle_term] def loogleTermImpl : TermElab :=
     fun stx expectedType? => do
   match stx with
-  | `(#loogle $s go) =>
-    let s := s.getString
+  | `(#loogle $args go) =>
+    let s := (← PrettyPrinter.ppCategory ``loogle_filters args).pretty
     let result ← getLoogleQueryJson s
     match result with
     | LoogleResult.success xs =>
@@ -196,7 +205,53 @@ syntax (name := loogle_term) "#loogle" str "go" : term
     defaultTerm expectedType?
   | _ => throwUnsupportedSyntax
 
+syntax (name := loogle_tactic) "#loogle" loogle_filters "go" : tactic
+@[tactic loogle_tactic] def loogleTacticImpl : Tactic :=
+    fun stx => do
+  match stx with
+  | `(tactic|#loogle $args go) =>
+    let s := (← PrettyPrinter.ppCategory ``loogle_filters args).pretty
+    let result ← getLoogleQueryJson s
+    match result with
+    | LoogleResult.success xs => do
+      let suggestionGroups := xs.map fun sr =>
+         (sr.name, sr.toTacticSuggestions)
+      for (name, sg) in suggestionGroups do
+        let sg ←  sg.filterM fun s =>
+          let sugTxt := s.suggestion
+          match sugTxt with
+          | .string s => do
+            let stx? := runParserCategory (← getEnv) `tactic s
+            match stx? with
+            | Except.ok stx =>
+              let n? ← checkTactic (← getMainTarget) stx
+              return n?.isSome
+            | Except.error _ =>
+              pure false
+          | _ => pure false
+        unless sg.isEmpty do
+          TryThis.addSuggestions stx sg (header := s!"From: {name}")
 
--- example := #loogle "List ?a → ?b" go
+    | LoogleResult.failure error suggestions? =>
+      logWarning s!"Loogle search failed with error: {error}"
+      logInfo loogleUsage
+      match suggestions? with
+      | some suggestions =>
+        let suggestions : List TryThis.Suggestion :=
+          suggestions.map fun s =>
+            {suggestion := .string s!"#loogle \"{s}\" go"}
+        unless suggestions.isEmpty do
+          TryThis.addSuggestions stx suggestions.toArray (header := s!"Did you maybe mean")
+      | none => pure ()
+  | _ => throwUnsupportedSyntax
+
+
+example : 3 ≤ 5 := by
+  -- #loogle Nat.succ_le_succ go
+  decide
+
+-- example := #loogle List ?a → ?b go
 
 end LeanSearchClient
+
+-- #loogle "sin", Real → Real, |- Real go
