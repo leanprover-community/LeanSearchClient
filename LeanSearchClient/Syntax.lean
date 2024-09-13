@@ -174,17 +174,17 @@ instance : Inhabited SearchServer := ⟨leanSearchServer⟩
 
 namespace SearchServer
 
-def getCommandSuggestions (ss : SearchServer) (s : String)(num_results : Nat) :
+def getCommandSuggestions (ss : SearchServer) (s : String) (num_results : Nat) :
     MetaM (Array TryThis.Suggestion) := do
   let suggestions ← ss.query s num_results
   return suggestions.map SearchResult.toCommandSuggestion
 
-def getTermSuggestions (ss : SearchServer) (s : String)(num_results : Nat) :
+def getTermSuggestions (ss : SearchServer) (s : String) (num_results : Nat) :
     MetaM (Array TryThis.Suggestion) := do
   let suggestions ← ss.query s num_results
   return suggestions.map SearchResult.toTermSuggestion
 
-def getTacticSuggestionGroups (ss : SearchServer) (s : String)(num_results : Nat) :
+def getTacticSuggestionGroups (ss : SearchServer) (s : String) (num_results : Nat) :
     MetaM (Array (String ×  Array TryThis.Suggestion)) := do
   let suggestions ← ss.query s num_results
   return suggestions.map fun sr =>
