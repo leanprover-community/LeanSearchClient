@@ -158,4 +158,8 @@ syntax (name := loogle_cmd) "#loogle" str "go" : command
 
 #loogle "List ?a → ?b" go
 
+#loogle "nonsense" go
+
+#loogle "?a → ?b" go
+
 end LeanSearchClient
