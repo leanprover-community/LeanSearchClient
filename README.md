@@ -63,3 +63,17 @@ example : 3 ≤ 5 := by
   #moogle "If a natural number n is less than m, then the successor of n is less than the successor of m."
   sorry
 ```
+
+## Loogle Search
+
+The `#loogle` command can also be used in all three modes. The syntax in this case is `#loogle <search query> go` as in the following examples.
+
+```lean
+#loogle List ?a → ?a go
+
+example := #loogle List ?a → ?a go
+
+example : 3 ≤ 5 := by
+  #loogle Nat.succ_le_succ go
+  sorry
+```
