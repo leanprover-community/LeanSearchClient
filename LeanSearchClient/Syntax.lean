@@ -39,7 +39,7 @@ open Lean Meta Elab Tactic Parser Term
 
 def getLeanSearchQueryJson (s : String) (num_results : Nat := 6) : IO <| Array Json := do
   let apiUrl := "https://leansearch.net/api/search"
-  let s' := s.replace " " "%20"
+  let s' := System.Uri.escapeUri s
   let q := apiUrl ++ s!"?query={s'}&num_results={num_results}"
   let s ← IO.Process.output {cmd := "curl", args := #["-X", "GET", q]}
   let js := Json.parse s.stdout |>.toOption |>.get!
@@ -96,10 +96,18 @@ def ofMoogleJson? (js : Json) : MetaM <| Option SearchResult :=
           pure none
       let doc? := js.getObjValAs? String "declarationDocString" |>.toOption
       let doc? := doc?.filter fun s => s != ""
-      let docurl? := none
       let kind? := js.getObjValAs? String "declarationType" |>.toOption
-      return some {name := name, type? := type?, docString? := doc?, doc_url? := docurl?, kind? := kind?}
+      return some {name := name, type? := type?, docString? := doc?, doc_url? := none, kind? := kind?}
   | _ => return none
+
+def ofLoogleJson? (js : Json) : Option SearchResult :=
+  match js.getObjValAs? String "name" with
+  | Except.ok name =>
+      let type? := js.getObjValAs? String "type" |>.toOption
+      let doc? := js.getObjValAs? String "doc" |>.toOption
+      let doc? := doc?.filter fun s => s != ""
+      some {name := name, type? := type?, docString? := doc?, doc_url? := none, kind? := none}
+  | _ => none
 
 def toCommandSuggestion (sr : SearchResult) : TryThis.Suggestion :=
   let data := match sr.docString? with

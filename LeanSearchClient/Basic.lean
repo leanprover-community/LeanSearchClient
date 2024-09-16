@@ -8,4 +8,9 @@ register_option leansearch.queries : Nat :=
 register_option moogle.queries : Nat :=
   { defValue := 6
     group := "moogle"
-    descr := "Number of results requested from leansearch (default 6)" }
+    descr := "Number of results requested from moogle (default 6)" }
+
+register_option loogle.queries : Nat :=
+  { defValue := 6
+    group := "loogle"
+    descr := "Number of results requested from loogle (default 6)" }
