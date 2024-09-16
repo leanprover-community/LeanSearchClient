@@ -54,7 +54,7 @@ def getLoogleQueryJson (s : String) (num_results : Nat := 6) :
   let apiUrl := "https://loogle.lean-lang.org/json"
   let s' := System.Uri.escapeUri s
   let q := apiUrl ++ s!"?q={s'}"
-  let s ← IO.Process.output {cmd := "curl", args := #["-X", "GET", q]}
+  let s ← IO.Process.output {cmd := "curl", args := #["-X", "GET", "--user-agent", "LeanSearchClient",  q]}
   match Json.parse s.stdout with
   | Except.error e =>
     IO.throwServerError s!"Could not parse JSON from {s.stdout}; error: {e}"

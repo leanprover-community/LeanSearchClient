@@ -41,7 +41,7 @@ def getLeanSearchQueryJson (s : String) (num_results : Nat := 6) : IO <| Array J
   let apiUrl := "https://leansearch.net/api/search"
   let s' := System.Uri.escapeUri s
   let q := apiUrl ++ s!"?query={s'}&num_results={num_results}"
-  let s ← IO.Process.output {cmd := "curl", args := #["-X", "GET", q]}
+  let s ← IO.Process.output {cmd := "curl", args := #["-X", "GET", "--user-agent", "LeanSearchClient", q]}
   let js := Json.parse s.stdout |>.toOption |>.get!
   return js.getArr? |>.toOption |>.get!
 
@@ -49,7 +49,7 @@ def getMoogleQueryJson (s : String) (num_results : Nat := 6) : IO <| Array Json 
   let apiUrl := "https://www.moogle.ai/api/search"
   let data := Json.arr
     #[Json.mkObj [("isFind", false), ("contents", s)]]
-  let s ← IO.Process.output {cmd := "curl", args := #[apiUrl, "-H", "content-type: application/json",  "--data", data.pretty]}
+  let s ← IO.Process.output {cmd := "curl", args := #[apiUrl, "-H", "content-type: application/json",  "--user-agent", "LeanSearchClient", "--data", data.pretty]}
   match Json.parse s.stdout with
   | Except.error e =>
     IO.throwServerError s!"Could not parse JSON from {s.stdout}; error: {e}"
