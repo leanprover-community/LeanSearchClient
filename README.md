@@ -66,14 +66,14 @@ example : 3 ≤ 5 := by
 
 ## Loogle Search
 
-The `#loogle` command can also be used in all three modes. The syntax in this case is `#loogle <search query> do_search` as in the following examples.
+The `#loogle` command can also be used in all three modes. The syntax in this case is `#loogle <search query>` as in the following examples.
 
 ```lean
-#loogle List ?a → ?a do_search
+#loogle List ?a → ?a
 
-example := #loogle List ?a → ?a do_search
+example := #loogle List ?a → ?a
 
 example : 3 ≤ 5 := by
-  #loogle Nat.succ_le_succ do_search
+  #loogle Nat.succ_le_succ
   sorry
 ```

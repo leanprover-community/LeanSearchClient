@@ -136,11 +136,11 @@ syntax loogle_filter := (turnstyle term) <|> term
 syntax loogle_filters := loogle_filter,*
 
 open Command
-syntax (name := loogle_cmd) "#loogle" loogle_filters "do_search" : command
+syntax (name := loogle_cmd) "#loogle" loogle_filters  : command
 @[command_elab loogle_cmd] def loogleCmdImpl : CommandElab := fun stx =>
   Command.liftTermElabM do
   match stx with
-  | `(command| #loogle $args:loogle_filters do_search) =>
+  | `(command| #loogle $args:loogle_filters) =>
     let s := (← PrettyPrinter.ppCategory ``loogle_filters args).pretty
     logInfo s
     let result ← getLoogleQueryJson s
@@ -159,26 +159,26 @@ syntax (name := loogle_cmd) "#loogle" loogle_filters "do_search" : command
       | some suggestions =>
         let suggestions : List TryThis.Suggestion :=
           suggestions.map fun s =>
-            {suggestion := .string s!"#loogle \"{s}\" do_search"}
+            {suggestion := .string s!"#loogle \"{s}\""}
         unless suggestions.isEmpty do
           TryThis.addSuggestions stx suggestions.toArray (header := s!"Did you maybe mean")
       | none => pure ()
   | _ => throwUnsupportedSyntax
 
--- #loogle List ?a → ?b do_search
+-- #loogle List ?a → ?b
 
--- #loogle nonsense do_search
+-- #loogle nonsense
 
--- #loogle ?a → ?b do_search
+-- #loogle ?a → ?b
 
--- #loogle sin do_search
+-- #loogle sin
 
 
-syntax (name := loogle_term) "#loogle" loogle_filters "do_search" : term
+syntax (name := loogle_term) "#loogle" loogle_filters  : term
 @[term_elab loogle_term] def loogleTermImpl : TermElab :=
     fun stx expectedType? => do
   match stx with
-  | `(#loogle $args do_search) =>
+  | `(#loogle $args) =>
     let s := (← PrettyPrinter.ppCategory ``loogle_filters args).pretty
     let result ← getLoogleQueryJson s
     match result with
@@ -198,18 +198,18 @@ syntax (name := loogle_term) "#loogle" loogle_filters "do_search" : term
         let suggestions : List TryThis.Suggestion :=
           suggestions.map fun s =>
             let s := s.replace "\"" "\\\""
-            {suggestion := .string s!"#loogle \"{s}\" do_search"}
+            {suggestion := .string s!"#loogle \"{s}\""}
         unless suggestions.isEmpty do
           TryThis.addSuggestions stx suggestions.toArray (header := s!"Did you maybe mean")
       | none => pure ()
     defaultTerm expectedType?
   | _ => throwUnsupportedSyntax
 
-syntax (name := loogle_tactic) "#loogle" loogle_filters "do_search" : tactic
+syntax (name := loogle_tactic) "#loogle" loogle_filters  : tactic
 @[tactic loogle_tactic] def loogleTacticImpl : Tactic :=
     fun stx => do
   match stx with
-  | `(tactic|#loogle $args do_search) =>
+  | `(tactic|#loogle $args) =>
     let s := (← PrettyPrinter.ppCategory ``loogle_filters args).pretty
     let result ← getLoogleQueryJson s
     match result with
@@ -239,7 +239,7 @@ syntax (name := loogle_tactic) "#loogle" loogle_filters "do_search" : tactic
       | some suggestions =>
         let suggestions : List TryThis.Suggestion :=
           suggestions.map fun s =>
-            {suggestion := .string s!"#loogle \"{s}\" do_search"}
+            {suggestion := .string s!"#loogle \"{s}\""}
         unless suggestions.isEmpty do
           TryThis.addSuggestions stx suggestions.toArray (header := s!"Did you maybe mean")
       | none => pure ()
@@ -247,11 +247,11 @@ syntax (name := loogle_tactic) "#loogle" loogle_filters "do_search" : tactic
 
 
 example : 3 ≤ 5 := by
-  -- #loogle Nat.succ_le_succ do_search
+  -- #loogle Nat.succ_le_succ
   decide
 
--- example := #loogle List ?a → ?b do_search
+-- example := #loogle List ?a → ?b
 
 end LeanSearchClient
 
--- #loogle "sin", Real → Real, |- Real do_search
+-- #loogle "sin", Real → Real, |- Real
