@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Siddhartha Gadgil
 -/
 import Lean.Elab.Tactic.Meta
+import Lean.Parser.Basic
 import Lean.Meta.Tactic.TryThis
 import LeanSearchClient.Basic
 import LeanSearchClient.Syntax
@@ -126,8 +127,15 @@ If you pass more than one such search filter, separated by commas Loogle will re
 🔍 Real.sin, \"two\", tsum, _ * _, _ ^ _, |- _ < _ → _
 woould find all lemmas which mention the constants Real.sin and tsum, have \"two\" as a substring of the lemma name, include a product and a power somewhere in the type, and have a hypothesis of the form _ < _ (if there were any such lemmas). Metavariables (?a) are assigned independently in each filter."
 
+#check Lean.Parser.nonReservedSymbol
+
+open Lean.Parser
+private def unicode_turnstile := nonReservedSymbol "⊢ "
+private def ascii_turnstile := nonReservedSymbol "|- "
+
 /-- The turnstyle uesd bin `#find`, unicode or ascii allowed -/
-syntax turnstyle := patternIgnore("⊢ " <|> "|- ")
+syntax turnstyle := patternIgnore(unicode_turnstile <|> ascii_turnstile)
+
 /-- a single `#find` filter. The `term` can also be an ident or a strlit,
 these are distinguished in `parseFindFilters` -/
 syntax loogle_filter := (turnstyle term) <|> term
