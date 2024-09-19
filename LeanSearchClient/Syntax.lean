@@ -254,44 +254,60 @@ end SearchServer
 
 open Command
 
-declare_syntax_cat search_cmd
+syntax (name := leansearch_search_cmd) "#leansearch" str : command
 
-syntax "#leansearch" : search_cmd
-syntax "#moogle" : search_cmd
-
-syntax (name := search_cmd) search_cmd str : command
-
-def getSearchServer (sc : Syntax) : SearchServer :=
-  match sc with
-  | `(search_cmd| #leansearch) => leanSearchServer
-  | `(search_cmd| #moogle) => moogleServer
-  | _ => panic! "unsupported search command"
-
-@[command_elab search_cmd] def searchCommandImpl : CommandElab :=
+@[command_elab leansearch_search_cmd] def leanSearchCommandImpl : CommandElab :=
   fun stx =>
   match stx with
-  | `(command| $sc:search_cmd $s) => do
-    let ss := getSearchServer sc
-    ss.searchCommandSuggestions  stx s
+  | `(command| #leansearch $s) => do
+    leanSearchServer.searchCommandSuggestions  stx s
   | _ => throwUnsupportedSyntax
 
-syntax (name := search_term) search_cmd str : term
+syntax (name := moogle_search_cmd) "#moogle" str : command
 
-@[term_elab search_term] def searchTermImpl : TermElab :=
+@[command_elab moogle_search_cmd] def moogleCommandImpl : CommandElab :=
+  fun stx =>
+  match stx with
+  | `(command| #moogle $s) => do
+    moogleServer.searchCommandSuggestions  stx s
+  | _ => throwUnsupportedSyntax
+
+
+syntax (name := leansearch_search_term) "#leansearch" str : term
+
+@[term_elab leansearch_search_term] def leanSearchTermImpl : TermElab :=
   fun stx expectedType? => do
   match stx with
-  | `($sc:search_cmd $s) =>
-    let ss := getSearchServer sc
-    ss.searchTermSuggestions stx s
+  | `(#leansearch $s) =>
+    leanSearchServer.searchTermSuggestions stx s
     defaultTerm expectedType?
   | _ => throwUnsupportedSyntax
 
-syntax (name := search_tactic) search_cmd str : tactic
+syntax (name := moogle_search_term) "#moogle" str : term
 
-@[tactic search_tactic] def searchTacticImpl : Tactic :=
+@[term_elab moogle_search_term] def moogleTermImpl : TermElab :=
+  fun stx expectedType? => do
+  match stx with
+  | `(#moogle $s) =>
+    moogleServer.searchTermSuggestions stx s
+    defaultTerm expectedType?
+  | _ => throwUnsupportedSyntax
+
+
+syntax (name := leansearch_search_tactic) "#leansearch" str : tactic
+
+@[tactic leansearch_search_tactic] def leanSearchTacticImpl : Tactic :=
   fun stx => withMainContext do
   match stx with
-  | `(tactic|$sc:search_cmd $s) =>
-    let ss := getSearchServer sc
-    ss.searchTacticSuggestions stx s
+  | `(tactic|#leansearch $s) =>
+    leanSearchServer.searchTacticSuggestions stx s
+  | _ => throwUnsupportedSyntax
+
+syntax (name := moogle_search_tactic) "#moogle" str : tactic
+
+@[tactic moogle_search_tactic] def moogleTacticImpl : Tactic :=
+  fun stx => withMainContext do
+  match stx with
+  | `(tactic|#moogle $s) =>
+    moogleServer.searchTacticSuggestions stx s
   | _ => throwUnsupportedSyntax
