@@ -148,7 +148,6 @@ syntax (name := loogle_cmd) "#loogle" loogle_filters  : command
   match stx with
   | `(command| #loogle $args:loogle_filters) =>
     let s := (← PrettyPrinter.ppCategory ``loogle_filters args).pretty
-    logInfo s
     let result ← getLoogleQueryJson s
     match result with
     | LoogleResult.success xs =>
