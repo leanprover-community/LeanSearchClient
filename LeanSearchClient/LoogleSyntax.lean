@@ -57,8 +57,8 @@ def getLoogleQueryJson (s : String) (num_results : Nat := 6) :
   let q := apiUrl ++ s!"?q={s'}"
   let s ← IO.Process.output {cmd := "curl", args := #["-X", "GET", "--user-agent", ← useragent,  q]}
   match Json.parse s.stdout with
-  | Except.error e =>
-    IO.throwServerError s!"Could not parse JSON from {s.stdout}; error: {e}"
+  | Except.error _ =>
+    IO.throwServerError s!"Could not contact Loogle server"
   | Except.ok js =>
   let result? := js.getObjValAs?  Json "hits" |>.toOption
   let result? := result?.filter fun js => js != Json.null

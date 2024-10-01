@@ -45,8 +45,10 @@ def getLeanSearchQueryJson (s : String) (num_results : Nat := 6) : CoreM <| Arra
   let s' := System.Uri.escapeUri s
   let q := apiUrl ++ s!"?query={s'}&num_results={num_results}"
   let s ← IO.Process.output {cmd := "curl", args := #["-X", "GET", "--user-agent", ← useragent, q]}
-  let js := Json.parse s.stdout |>.toOption |>.get!
-  return js.getArr? |>.toOption |>.get!
+  let js ← match Json.parse s.stdout |>.toOption with
+    | some js => pure js
+    | none => IO.throwServerError s!"Could not contact LeanSearch server"
+  return js.getArr? |>.toOption |>.getD #[]
 
 def getMoogleQueryJson (s : String) (num_results : Nat := 6) : CoreM <| Array Json := do
   let apiUrl := "https://www.moogle.ai/api/search"
@@ -54,8 +56,8 @@ def getMoogleQueryJson (s : String) (num_results : Nat := 6) : CoreM <| Array Js
     #[Json.mkObj [("isFind", false), ("contents", s)]]
   let s ← IO.Process.output {cmd := "curl", args := #[apiUrl, "-H", "content-type: application/json",  "--user-agent", ← useragent, "--data", data.pretty]}
   match Json.parse s.stdout with
-  | Except.error e =>
-    IO.throwServerError s!"Could not parse JSON from {s.stdout}; error: {e}"
+  | Except.error _ =>
+    throwError m!"Could not contact Moogle server"
   | Except.ok js =>
   let result? := js.getObjValAs?  Json "data"
   match result? with
