@@ -255,7 +255,20 @@ def searchTacticSuggestions (ss: SearchServer) (stx: Syntax) (s: TSyntax `str) :
 end SearchServer
 
 open Command
+/-- Search [LeanSearch](https://leansearch.net/) from within Lean.
+Queries should end with a `.` or `?`. This works as a command, as a term
+and as a tactic as in the following examples. In tactic mode, only valid tactics are displayed.
 
+```lean
+#leansearch "If a natural number n is less than m, then the successor of n is less than the successor of m."
+
+example := #leansearch "If a natural number n is less than m, then the successor of n is less than the successor of m."
+
+example : 3 ≤ 5 := by
+  #leansearch "If a natural number n is less than m, then the successor of n is less than the successor of m."
+  sorry
+```
+ -/
 syntax (name := leansearch_search_cmd) "#leansearch" str : command
 
 @[command_elab leansearch_search_cmd] def leanSearchCommandImpl : CommandElab :=
@@ -265,6 +278,20 @@ syntax (name := leansearch_search_cmd) "#leansearch" str : command
     leanSearchServer.searchCommandSuggestions  stx s
   | _ => throwUnsupportedSyntax
 
+/-- Search [Moogle](https://www.moogle.ai/api/search) from within Lean.
+Queries should end with a `.` or `?`. This works as a command, as a term
+and as a tactic as in the following examples. In tactic mode, only valid tactics are displayed.
+
+```lean
+#moogle "If a natural number n is less than m, then the successor of n is less than the successor of m."
+
+example := #moogle "If a natural number n is less than m, then the successor of n is less than the successor of m."
+
+example : 3 ≤ 5 := by
+  #moogle "If a natural number n is less than m, then the successor of n is less than the successor of m."
+  sorry
+```
+ -/
 syntax (name := moogle_search_cmd) "#moogle" str : command
 
 @[command_elab moogle_search_cmd] def moogleCommandImpl : CommandElab :=
@@ -274,7 +301,7 @@ syntax (name := moogle_search_cmd) "#moogle" str : command
     moogleServer.searchCommandSuggestions  stx s
   | _ => throwUnsupportedSyntax
 
-
+@[inherit_doc leansearch_search_cmd]
 syntax (name := leansearch_search_term) "#leansearch" str : term
 
 @[term_elab leansearch_search_term] def leanSearchTermImpl : TermElab :=
@@ -285,6 +312,7 @@ syntax (name := leansearch_search_term) "#leansearch" str : term
     defaultTerm expectedType?
   | _ => throwUnsupportedSyntax
 
+@[inherit_doc moogle_search_cmd]
 syntax (name := moogle_search_term) "#moogle" str : term
 
 @[term_elab moogle_search_term] def moogleTermImpl : TermElab :=
@@ -295,7 +323,7 @@ syntax (name := moogle_search_term) "#moogle" str : term
     defaultTerm expectedType?
   | _ => throwUnsupportedSyntax
 
-
+@[inherit_doc leansearch_search_cmd]
 syntax (name := leansearch_search_tactic) "#leansearch" str : tactic
 
 @[tactic leansearch_search_tactic] def leanSearchTacticImpl : Tactic :=
@@ -305,6 +333,7 @@ syntax (name := leansearch_search_tactic) "#leansearch" str : tactic
     leanSearchServer.searchTacticSuggestions stx s
   | _ => throwUnsupportedSyntax
 
+@[inherit_doc moogle_search_cmd]
 syntax (name := moogle_search_tactic) "#moogle" str : tactic
 
 @[tactic moogle_search_tactic] def moogleTacticImpl : Tactic :=

@@ -142,6 +142,56 @@ syntax loogle_filter := (turnstyle term) <|> term
 syntax loogle_filters := loogle_filter,*
 
 open Command
+/--
+Search [Loogle](https://loogle.lean-lang.org/json) from within Lean. This can be used as a command, term or tactic as in the following examples. In the case of a tactic, only valid tactics are displayed.
+
+
+```lean
+#loogle List ?a → ?a
+
+example := #loogle List ?a → ?a
+
+example : 3 ≤ 5 := by
+  #loogle Nat.succ_le_succ
+  sorry
+
+```
+
+## Loogle Usage
+
+Loogle finds definitions and lemmas in various ways:
+
+By constant:
+🔍 Real.sin
+finds all lemmas whose statement somehow mentions the sine function.
+
+By lemma name substring:
+🔍 \"differ\"
+finds all lemmas that have \"differ\" somewhere in their lemma name.
+
+By subexpression:
+🔍 _ * (_ ^ _)
+finds all lemmas whose statements somewhere include a product where the second argument is raised to some power.
+
+The pattern can also be non-linear, as in
+🔍 Real.sqrt ?a * Real.sqrt ?a
+
+If the pattern has parameters, they are matched in any order. Both of these will find List.map:
+🔍 (?a -> ?b) -> List ?a -> List ?b
+🔍 List ?a -> (?a -> ?b) -> List ?b
+
+By main conclusion:
+🔍 |- tsum _ = _ * tsum _
+finds all lemmas where the conclusion (the subexpression to the right of all → and ∀) has the given shape.
+
+As before, if the pattern has parameters, they are matched against the hypotheses of the lemma in any order; for example,
+🔍 |- _ < _ → tsum _ < tsum _
+will find tsum_lt_tsum even though the hypothesis f i < g i is not the last.
+
+If you pass more than one such search filter, separated by commas Loogle will return lemmas which match all of them. The search
+🔍 Real.sin, \"two\", tsum, _ * _, _ ^ _, |- _ < _ → _
+woould find all lemmas which mention the constants Real.sin and tsum, have \"two\" as a substring of the lemma name, include a product and a power somewhere in the type, and have a hypothesis of the form _ < _ (if there were any such lemmas). Metavariables (?a) are assigned independently in each filter.
+-/
 syntax (name := loogle_cmd) "#loogle" loogle_filters  : command
 @[command_elab loogle_cmd] def loogleCmdImpl : CommandElab := fun stx =>
   Command.liftTermElabM do
@@ -178,7 +228,7 @@ syntax (name := loogle_cmd) "#loogle" loogle_filters  : command
 
 -- #loogle sin
 
-
+@[inherit_doc loogle_cmd]
 syntax (name := loogle_term) "#loogle" loogle_filters  : term
 @[term_elab loogle_term] def loogleTermImpl : TermElab :=
     fun stx expectedType? => do
@@ -210,6 +260,7 @@ syntax (name := loogle_term) "#loogle" loogle_filters  : term
     defaultTerm expectedType?
   | _ => throwUnsupportedSyntax
 
+@[inherit_doc loogle_cmd]
 syntax (name := loogle_tactic) "#loogle" loogle_filters  : tactic
 @[tactic loogle_tactic] def loogleTacticImpl : Tactic :=
     fun stx => do
