@@ -16,3 +16,7 @@ set_option loogle.queries 1
 example : 3 ≤ 5 := by
   #loogle Nat.succ_le_succ
   sorry
+
+example : 3 ≤ 5 := by
+  #loogle
+  decide

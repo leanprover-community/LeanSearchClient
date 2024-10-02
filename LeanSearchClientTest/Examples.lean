@@ -33,3 +33,13 @@ warning: declaration uses 'sorry'
 example : 3 ≤ 5 := by
   #leansearch "If a natural number n is less than m, then the successor of n is less than the successor of m."
   sorry
+
+
+/--
+warning: #leansearch query should be a string that ends with a `.` or `?`.
+Note this command sends your query to an external service at https://leansearch.net/.
+-/
+#guard_msgs in
+example : 3 ≤ 5 := by
+  #leansearch
+  decide

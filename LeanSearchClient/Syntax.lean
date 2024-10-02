@@ -334,25 +334,27 @@ syntax (name := moogle_search_term) "#moogle" (str)? : term
   | _ => throwUnsupportedSyntax
 
 @[inherit_doc leansearch_search_cmd]
-syntax (name := leansearch_search_tactic) "#leansearch" (str)? : tactic
+syntax (name := leansearch_search_tactic)
+  withPosition("#leansearch" (colGt str)?) : tactic
 
 @[tactic leansearch_search_tactic] def leanSearchTacticImpl : Tactic :=
   fun stx => withMainContext do
   match stx with
   | `(tactic|#leansearch $s) =>
     leanSearchServer.searchTacticSuggestions stx s
-  | `(#leansearch) => do
+  | `(tactic|#leansearch) => do
     logWarning leanSearchServer.incompleteSearchQuery
   | _ => throwUnsupportedSyntax
 
 @[inherit_doc moogle_search_cmd]
-syntax (name := moogle_search_tactic) "#moogle" (str)? : tactic
+syntax (name := moogle_search_tactic)
+  withPosition("#moogle" (colGt str)?) : tactic
 
 @[tactic moogle_search_tactic] def moogleTacticImpl : Tactic :=
   fun stx => withMainContext do
   match stx with
   | `(tactic|#moogle $s) =>
     moogleServer.searchTacticSuggestions stx s
-  | `(#moogle) => do
+  | `(tactic|#moogle) => do
     logWarning moogleServer.incompleteSearchQuery
   | _ => throwUnsupportedSyntax

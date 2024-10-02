@@ -265,7 +265,8 @@ syntax (name := loogle_term) "#loogle" loogle_filters  : term
   | _ => throwUnsupportedSyntax
 
 @[inherit_doc loogle_cmd]
-syntax (name := loogle_tactic) "#loogle" loogle_filters  : tactic
+syntax (name := loogle_tactic)
+  withPosition("#loogle" (ppSpace colGt (loogle_filters)))  : tactic
 @[tactic loogle_tactic] def loogleTacticImpl : Tactic :=
     fun stx => do
   match stx with
@@ -293,7 +294,6 @@ syntax (name := loogle_tactic) "#loogle" loogle_filters  : tactic
           | _ => pure false
         unless sg.isEmpty do
           TryThis.addSuggestions stx sg (header := s!"From: {name}")
-
     | LoogleResult.failure error suggestions? =>
       logWarning s!"Loogle search failed with error: {error}"
       logInfo loogleUsage
@@ -307,6 +307,10 @@ syntax (name := loogle_tactic) "#loogle" loogle_filters  : tactic
       | none => pure ()
   | _ => throwUnsupportedSyntax
 
+syntax (name := just_loogle_tactic)(priority := low) "#loogle"  : tactic
+@[tactic just_loogle_tactic] def justLoogleTacticImpl : Tactic :=
+  fun _ => do
+    logWarning loogleUsage
 
 example : 3 ≤ 5 := by
   -- #loogle Nat.succ_le_succ
