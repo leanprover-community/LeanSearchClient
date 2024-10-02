@@ -207,7 +207,7 @@ def getTacticSuggestionGroups (ss : SearchServer) (s : String) (num_results : Na
     (fullName, sr.toTacticSuggestions)
 
 def incompleteSearchQuery (ss : SearchServer) : String :=
-  s!"{ss.cmd} query should end with a `.` or `?`.\n\
+  s!"{ss.cmd} query should be a string that ends with a `.` or `?`.\n\
    Note this command sends your query to an external service at {ss.url}."
 
 open Command
@@ -256,7 +256,7 @@ end SearchServer
 
 open Command
 /-- Search [LeanSearch](https://leansearch.net/) from within Lean.
-Queries should end with a `.` or `?`. This works as a command, as a term
+Queries should be a string that ends with a `.` or `?`. This works as a command, as a term
 and as a tactic as in the following examples. In tactic mode, only valid tactics are displayed.
 
 ```lean
@@ -269,17 +269,19 @@ example : 3 ≤ 5 := by
   sorry
 ```
  -/
-syntax (name := leansearch_search_cmd) "#leansearch" str : command
+syntax (name := leansearch_search_cmd) "#leansearch" (str)? : command
 
 @[command_elab leansearch_search_cmd] def leanSearchCommandImpl : CommandElab :=
   fun stx =>
   match stx with
   | `(command| #leansearch $s) => do
     leanSearchServer.searchCommandSuggestions  stx s
+  | `(command| #leansearch) => do
+    logWarning leanSearchServer.incompleteSearchQuery
   | _ => throwUnsupportedSyntax
 
 /-- Search [Moogle](https://www.moogle.ai/api/search) from within Lean.
-Queries should end with a `.` or `?`. This works as a command, as a term
+Queries should be a string that ends with a `.` or `?`. This works as a command, as a term
 and as a tactic as in the following examples. In tactic mode, only valid tactics are displayed.
 
 ```lean
@@ -292,17 +294,19 @@ example : 3 ≤ 5 := by
   sorry
 ```
  -/
-syntax (name := moogle_search_cmd) "#moogle" str : command
+syntax (name := moogle_search_cmd) "#moogle" (str)? : command
 
 @[command_elab moogle_search_cmd] def moogleCommandImpl : CommandElab :=
   fun stx =>
   match stx with
   | `(command| #moogle $s) => do
     moogleServer.searchCommandSuggestions  stx s
+  | `(command| #moogle) => do
+    logWarning moogleServer.incompleteSearchQuery
   | _ => throwUnsupportedSyntax
 
 @[inherit_doc leansearch_search_cmd]
-syntax (name := leansearch_search_term) "#leansearch" str : term
+syntax (name := leansearch_search_term) "#leansearch" (str)? : term
 
 @[term_elab leansearch_search_term] def leanSearchTermImpl : TermElab :=
   fun stx expectedType? => do
@@ -310,10 +314,13 @@ syntax (name := leansearch_search_term) "#leansearch" str : term
   | `(#leansearch $s) =>
     leanSearchServer.searchTermSuggestions stx s
     defaultTerm expectedType?
+  | `(#leansearch) => do
+    logWarning leanSearchServer.incompleteSearchQuery
+    defaultTerm expectedType?
   | _ => throwUnsupportedSyntax
 
 @[inherit_doc moogle_search_cmd]
-syntax (name := moogle_search_term) "#moogle" str : term
+syntax (name := moogle_search_term) "#moogle" (str)? : term
 
 @[term_elab moogle_search_term] def moogleTermImpl : TermElab :=
   fun stx expectedType? => do
@@ -321,24 +328,31 @@ syntax (name := moogle_search_term) "#moogle" str : term
   | `(#moogle $s) =>
     moogleServer.searchTermSuggestions stx s
     defaultTerm expectedType?
+  | `(#moogle) => do
+    logWarning moogleServer.incompleteSearchQuery
+    defaultTerm expectedType?
   | _ => throwUnsupportedSyntax
 
 @[inherit_doc leansearch_search_cmd]
-syntax (name := leansearch_search_tactic) "#leansearch" str : tactic
+syntax (name := leansearch_search_tactic) "#leansearch" (str)? : tactic
 
 @[tactic leansearch_search_tactic] def leanSearchTacticImpl : Tactic :=
   fun stx => withMainContext do
   match stx with
   | `(tactic|#leansearch $s) =>
     leanSearchServer.searchTacticSuggestions stx s
+  | `(#leansearch) => do
+    logWarning leanSearchServer.incompleteSearchQuery
   | _ => throwUnsupportedSyntax
 
 @[inherit_doc moogle_search_cmd]
-syntax (name := moogle_search_tactic) "#moogle" str : tactic
+syntax (name := moogle_search_tactic) "#moogle" (str)? : tactic
 
 @[tactic moogle_search_tactic] def moogleTacticImpl : Tactic :=
   fun stx => withMainContext do
   match stx with
   | `(tactic|#moogle $s) =>
     moogleServer.searchTacticSuggestions stx s
+  | `(#moogle) => do
+    logWarning moogleServer.incompleteSearchQuery
   | _ => throwUnsupportedSyntax

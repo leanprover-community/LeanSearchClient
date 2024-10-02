@@ -46,6 +46,7 @@ structure LoogleMatch where
   deriving Inhabited, Repr
 
 inductive LoogleResult where
+  | empty : LoogleResult
   | success : Array SearchResult →  LoogleResult
   | failure (error : String) (suggestions: Option <| List String) : LoogleResult
   deriving Inhabited, Repr
@@ -54,6 +55,8 @@ def getLoogleQueryJson (s : String) (num_results : Nat := 6) :
   CoreM <| LoogleResult:= do
   let apiUrl := "https://loogle.lean-lang.org/json"
   let s' := System.Uri.escapeUri s
+  if s.trim == "" then
+    return LoogleResult.empty
   let q := apiUrl ++ s!"?q={s'}"
   let s ← IO.Process.output {cmd := "curl", args := #["-X", "GET", "--user-agent", ← useragent,  q]}
   match Json.parse s.stdout with
@@ -200,6 +203,8 @@ syntax (name := loogle_cmd) "#loogle" loogle_filters  : command
     let s := (← PrettyPrinter.ppCategory ``loogle_filters args).pretty
     let result ← getLoogleQueryJson s
     match result with
+    | LoogleResult.empty =>
+      logInfo loogleUsage
     | LoogleResult.success xs =>
       let suggestions := xs.map SearchResult.toCommandSuggestion
       if suggestions.isEmpty then
@@ -220,13 +225,10 @@ syntax (name := loogle_cmd) "#loogle" loogle_filters  : command
       | none => pure ()
   | _ => throwUnsupportedSyntax
 
--- #loogle List ?a → ?b
+@[inherit_doc loogle_cmd]
+syntax (name := just_loogle_cmd)(priority := low) "#loogle" loogle_filters  : command
+@[command_elab just_loogle_cmd] def justLoogleCmdImpl : CommandElab := fun _ => return
 
--- #loogle nonsense
-
--- #loogle ?a → ?b
-
--- #loogle sin
 
 @[inherit_doc loogle_cmd]
 syntax (name := loogle_term) "#loogle" loogle_filters  : term
@@ -237,6 +239,8 @@ syntax (name := loogle_term) "#loogle" loogle_filters  : term
     let s := (← PrettyPrinter.ppCategory ``loogle_filters args).pretty
     let result ← getLoogleQueryJson s
     match result with
+    | LoogleResult.empty =>
+      logInfo loogleUsage
     | LoogleResult.success xs =>
       let suggestions := xs.map SearchResult.toTermSuggestion
       if suggestions.isEmpty then
@@ -269,6 +273,8 @@ syntax (name := loogle_tactic) "#loogle" loogle_filters  : tactic
     let s := (← PrettyPrinter.ppCategory ``loogle_filters args).pretty
     let result ← getLoogleQueryJson s
     match result with
+    | LoogleResult.empty =>
+      logInfo loogleUsage
     | LoogleResult.success xs => do
       let suggestionGroups := xs.map fun sr =>
          (sr.name, sr.toTacticSuggestions)

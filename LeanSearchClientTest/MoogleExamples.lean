@@ -7,14 +7,14 @@ Examples of using the Moogle API. The search is triggered when the sentence ends
 -/
 
 /--
-warning: #moogle query should end with a `.` or `?`.
+warning: #moogle query should be a string that ends with a `.` or `?`.
 Note this command sends your query to an external service at https://www.moogle.ai/api/search.
 -/
 #guard_msgs in
 #moogle "If a natural number n is less than m, then the successor of n is less than the successor of m"
 
 /--
-warning: #moogle query should end with a `.` or `?`.
+warning: #moogle query should be a string that ends with a `.` or `?`.
 Note this command sends your query to an external service at https://www.moogle.ai/api/search.
 -/
 #guard_msgs in

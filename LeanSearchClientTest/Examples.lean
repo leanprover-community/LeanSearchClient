@@ -7,14 +7,14 @@ Examples of using the leansearch API. The search is triggered when the sentence 
 -/
 
 /--
-warning: #leansearch query should end with a `.` or `?`.
+warning: #leansearch query should be a string that ends with a `.` or `?`.
 Note this command sends your query to an external service at https://leansearch.net/.
 -/
 #guard_msgs in
 #leansearch "If a natural number n is less than m, then the successor of n is less than the successor of m"
 
 /--
-warning: #leansearch query should end with a `.` or `?`.
+warning: #leansearch query should be a string that ends with a `.` or `?`.
 Note this command sends your query to an external service at https://leansearch.net/.
 -/
 #guard_msgs in
