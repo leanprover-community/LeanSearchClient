@@ -51,46 +51,55 @@ inductive LoogleResult where
   | failure (error : String) (suggestions: Option <| List String) : LoogleResult
   deriving Inhabited, Repr
 
+initialize loogleCache :
+  IO.Ref (Std.HashMap (String × Nat) LoogleResult) ← IO.mkRef {}
+
 def getLoogleQueryJson (s : String) (num_results : Nat := 6) :
   CoreM <| LoogleResult:= do
-  let apiUrl := "https://loogle.lean-lang.org/json"
-  let s' := System.Uri.escapeUri s
-  if s.trim == "" then
-    return LoogleResult.empty
-  let q := apiUrl ++ s!"?q={s'}"
-  let s ← IO.Process.output {cmd := "curl", args := #["-X", "GET", "--user-agent", ← useragent,  q]}
-  match Json.parse s.stdout with
-  | Except.error _ =>
-    IO.throwServerError s!"Could not contact Loogle server"
-  | Except.ok js =>
-  let result? := js.getObjValAs?  Json "hits" |>.toOption
-  let result? := result?.filter fun js => js != Json.null
-  match result? with
-    | some result => do
-        match result.getArr? with
-        | Except.ok arr =>
-          let arr :=  arr[0:num_results] |>.toArray
-          let xs : Array SearchResult ←
-            arr.mapM fun js => do
-              let doc? := js.getObjValAs? String "doc" |>.toOption
-              let name? := js.getObjValAs? String "name"
-              let type? := js.getObjValAs? String "type"
-              match name?, type? with
-              | Except.ok name, Except.ok type =>
-                pure <| {name := name, type? := some type, docString? := doc?, doc_url? := none, kind? := none}
-              | _, _ =>
-                IO.throwServerError s!"Could not obtain name and type from {js}"
-          return LoogleResult.success xs
-        | Except.error e => IO.throwServerError s!"Could not obtain array from {js}; error: {e}, query :{s'}, hits: {result}"
-    | _ =>
-      let error? := js.getObjValAs? String "error"
-      match error? with
-        | Except.ok error =>
-          let suggestions? :=
-            js.getObjValAs? (List String) "suggestions" |>.toOption
-          pure <| LoogleResult.failure error suggestions?
-        | _ =>
-          IO.throwServerError s!"Could not obtain hits or error from {js}"
+  let cache ← loogleCache.get
+  match cache.get? (s, num_results) with
+  | some r => return r
+  | none => do
+    let apiUrl := "https://loogle.lean-lang.org/json"
+    let s' := System.Uri.escapeUri s
+    if s.trim == "" then
+      return LoogleResult.empty
+    let q := apiUrl ++ s!"?q={s'}"
+    let out ← IO.Process.output {cmd := "curl", args := #["-X", "GET", "--user-agent", ← useragent,  q]}
+    match Json.parse out.stdout with
+    | Except.error _ =>
+      IO.throwServerError s!"Could not contact Loogle server"
+    | Except.ok js =>
+    let result? := js.getObjValAs?  Json "hits" |>.toOption
+    let result? := result?.filter fun js => js != Json.null
+    match result? with
+      | some result => do
+          match result.getArr? with
+          | Except.ok arr =>
+            let arr :=  arr[0:num_results] |>.toArray
+            let xs : Array SearchResult ←
+              arr.mapM fun js => do
+                let doc? := js.getObjValAs? String "doc" |>.toOption
+                let name? := js.getObjValAs? String "name"
+                let type? := js.getObjValAs? String "type"
+                match name?, type? with
+                | Except.ok name, Except.ok type =>
+                  pure <| {name := name, type? := some type, docString? := doc?, doc_url? := none, kind? := none}
+                | _, _ =>
+                  IO.throwServerError s!"Could not obtain name and type from {js}"
+            loogleCache.modify fun m => m.insert (s, num_results) (LoogleResult.success xs)
+            return LoogleResult.success xs
+          | Except.error e => IO.throwServerError s!"Could not obtain array from {js}; error: {e}, query :{s'}, hits: {result}"
+      | _ =>
+        let error? := js.getObjValAs? String "error"
+        match error? with
+          | Except.ok error =>
+            let suggestions? :=
+              js.getObjValAs? (List String) "suggestions" |>.toOption
+            loogleCache.modify fun m => m.insert (s, num_results) (LoogleResult.failure error suggestions?)
+            pure <| LoogleResult.failure error suggestions?
+          | _ =>
+            IO.throwServerError s!"Could not obtain hits or error from {js}"
 
 -- #eval getLoogleQueryJson "List"
 

@@ -40,22 +40,41 @@ open Lean Meta Elab Tactic Parser Term
 def useragent : CoreM String :=
   return leansearchclient.useragent.get (← getOptions)
 
+initialize leanSearchCache :
+  IO.Ref (Std.HashMap (String × Nat) (Array Json)) ← IO.mkRef {}
+
+initialize moogleCache :
+  IO.Ref (Std.HashMap String (Array Json)) ← IO.mkRef {}
+
 def getLeanSearchQueryJson (s : String) (num_results : Nat := 6) : CoreM <| Array Json := do
-  let apiUrl := "https://leansearch.net/api/search"
-  let s' := System.Uri.escapeUri s
-  let q := apiUrl ++ s!"?query={s'}&num_results={num_results}"
-  let s ← IO.Process.output {cmd := "curl", args := #["-X", "GET", "--user-agent", ← useragent, q]}
-  let js ← match Json.parse s.stdout |>.toOption with
-    | some js => pure js
-    | none => IO.throwServerError s!"Could not contact LeanSearch server"
-  return js.getArr? |>.toOption |>.getD #[]
+  let cache ← leanSearchCache.get
+  match cache.get? (s, num_results) with
+  | some jsArr => return jsArr
+  | none => do
+    let apiUrl := "https://leansearch.net/api/search"
+    let s' := System.Uri.escapeUri s
+    let q := apiUrl ++ s!"?query={s'}&num_results={num_results}"
+    let out ← IO.Process.output {cmd := "curl", args := #["-X", "GET", "--user-agent", ← useragent, q]}
+    let js ← match Json.parse out.stdout |>.toOption with
+      | some js => pure js
+      | none => IO.throwServerError s!"Could not contact LeanSearch server"
+    match js.getArr? with
+    | Except.ok jsArr => do
+      leanSearchCache.modify fun m => m.insert (s, num_results) jsArr
+      return jsArr
+    | Except.error e =>
+      IO.throwServerError s!"Could not obtain array from {js}; error: {e}"
 
 def getMoogleQueryJson (s : String) (num_results : Nat := 6) : CoreM <| Array Json := do
+  let cache ← moogleCache.get
+  match cache.get? s with
+  | some jsArr => return jsArr
+  | none => do
   let apiUrl := "https://www.moogle.ai/api/search"
   let data := Json.arr
     #[Json.mkObj [("isFind", false), ("contents", s)]]
-  let s ← IO.Process.output {cmd := "curl", args := #[apiUrl, "-H", "content-type: application/json",  "--user-agent", ← useragent, "--data", data.pretty]}
-  match Json.parse s.stdout with
+  let out ← IO.Process.output {cmd := "curl", args := #[apiUrl, "-H", "content-type: application/json",  "--user-agent", ← useragent, "--data", data.pretty]}
+  match Json.parse out.stdout with
   | Except.error _ =>
     throwError m!"Could not contact Moogle server"
   | Except.ok js =>
@@ -63,7 +82,9 @@ def getMoogleQueryJson (s : String) (num_results : Nat := 6) : CoreM <| Array Js
   match result? with
     | Except.ok result =>
         match result.getArr? with
-        | Except.ok arr => return arr[0:num_results]
+        | Except.ok arr =>
+            moogleCache.modify fun m => m.insert s arr
+            return arr[0:num_results]
         | Except.error e => IO.throwServerError s!"Could not obtain array from {js}; error: {e}"
     | _ => IO.throwServerError s!"Could not obtain data from {js}"
 
