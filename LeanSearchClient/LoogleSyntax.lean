@@ -56,6 +56,8 @@ initialize loogleCache :
 
 def getLoogleQueryJson (s : String) (num_results : Nat := 6) :
   CoreM <| LoogleResult:= do
+  let s := s.splitOn "/-" |>.getD 0 s |>.trim
+  let s := s.replace "\n" " "
   let cache ← loogleCache.get
   match cache.get? (s, num_results) with
   | some r => return r
