@@ -228,7 +228,7 @@ syntax (name := loogle_cmd) "#loogle" loogle_filters  : command
       | some suggestions =>
         let suggestions : List TryThis.Suggestion :=
           suggestions.map fun s =>
-            {suggestion := .string s!"#loogle \"{s}\""}
+            {suggestion := .string s!"#loogle {s}"}
         unless suggestions.isEmpty do
           TryThis.addSuggestions stx suggestions.toArray (header := s!"Did you maybe mean")
       | none => pure ()

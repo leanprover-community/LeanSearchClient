@@ -20,3 +20,5 @@ example : 3 ≤ 5 := by
 example : 3 ≤ 5 := by
   #loogle
   decide
+
+#loogle Dist.dist, edist
