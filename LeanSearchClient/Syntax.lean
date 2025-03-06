@@ -108,7 +108,13 @@ def getStateSearchQueryJson (s : String) (num_results : Nat := 6) (rev : String)
       stateSearchCache.modify fun m => m.insert (s, num_results, rev) jsArr
       return jsArr
     | Except.error e =>
-      IO.throwServerError s!"Could not obtain array from {js}; error: {e}"
+      let .ok err := js.getObjVal? "error"
+        | IO.throwServerError s!"{e}"
+      let .ok schema := js.getObjVal? "schema"
+        | IO.throwServerError s!"{e}"
+      let .ok desc := schema.getObjVal? "description"
+        | IO.throwServerError s!"{e}"
+      IO.throwServerError s!"error: {err}\ndescription: {desc}"
 
 structure SearchResult where
   name : String

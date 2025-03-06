@@ -22,9 +22,8 @@ example : 0 ≤ 1 := by
 
 set_option statesearch.revision "v4.15.0"
 
-/-- error: Could not obtain array from {"schema":
- {"description": "Lean State Search does not support the specified revision"},
- "error": "Invalid parameter value"}; error: array expected
+/-- error: error: "Invalid parameter value"
+description: "Lean State Search does not support the specified revision"
 -/
 #guard_msgs in
 example : 0 ≤ 1 := by
