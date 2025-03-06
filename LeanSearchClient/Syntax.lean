@@ -417,17 +417,15 @@ syntax (name := moogle_search_tactic)
   | _ => throwUnsupportedSyntax
 
 /-- Search [LeanStateSearch](https://premise-search.com) from within Lean.
-Your current main goal is sent as query. You can specify a revision. The number
-of results can be set using the `statesearch.queries` option.
+Your current main goal is sent as query. The revision to search can be set
+using the `statesearch.revision` option. The number of results can be set
+using the `statesearch.queries` option.
 
 Hint: If you want to modify the query, you need to use the web interface.
 
 ```lean
 set_option statesearch.queries 1
-
-example : 0 ≤ 1 := by
-  #statesearch "v4.16.0"
-  sorry
+set_option statesearch.revision "v4.16.0"
 
 example : 0 ≤ 1 := by
   #statesearch
@@ -435,21 +433,16 @@ example : 0 ≤ 1 := by
 ```
 -/
 syntax (name := statesearch_search_tactic)
-  withPosition("#statesearch" (str)?) : tactic
+  withPosition("#statesearch") : tactic
 
 @[tactic statesearch_search_tactic] def stateSearchTacticImpl : Tactic :=
   fun stx => withMainContext do
   let goal ← getMainGoal
   let state := (← Meta.ppGoal goal).pretty
   let num_results := (statesearch.queries.get (← getOptions))
+  let rev := (statesearch.revision.get (← getOptions))
   match stx with
-  | `(tactic|#statesearch $rev:str) =>
-    let rev := rev.getString
-    let results ← queryStateSearch state num_results rev
-    let suggestions := results.map SearchResult.toCommandSuggestion
-    TryThis.addSuggestions stx suggestions
   | `(tactic|#statesearch) =>
-    let rev := s!"v{Lean.versionString}"
     let results ← queryStateSearch state num_results rev
     let suggestions := results.map SearchResult.toCommandSuggestion
     TryThis.addSuggestions stx suggestions

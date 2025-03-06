@@ -8,6 +8,7 @@ tactic `#statesearch`.
 -/
 
 set_option statesearch.queries 1 -- set the number of results to 1
+set_option statesearch.revision "v4.16.0" -- set the revision to v4.16.0
 
 /-- info: Try these:
 • #check Int.one_nonneg
@@ -16,8 +17,10 @@ warning: declaration uses 'sorry'
 -/
 #guard_msgs in
 example : 0 ≤ 1 := by
-  #statesearch "v4.16.0"
+  #statesearch
   sorry
+
+set_option statesearch.revision "v4.15.0"
 
 /-- error: Could not obtain array from {"schema":
  {"description": "Lean State Search does not support the specified revision"},
@@ -25,14 +28,4 @@ example : 0 ≤ 1 := by
 -/
 #guard_msgs in
 example : 0 ≤ 1 := by
-  #statesearch "v4.15.0"
-
-/-- info: Try these:
-• #check Int.one_nonneg
----
-warning: declaration uses 'sorry'
--/
-#guard_msgs in
-example : 1 ≤ 0 := by
   #statesearch
-  sorry
