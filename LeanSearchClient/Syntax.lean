@@ -425,10 +425,6 @@ Hint: If you want to modify the query, you need to use the web interface.
 
 ```lean
 example : 0 ≤ 1 := by
-  #statesearch "v4.16.0" 10
-  sorry
-
-example : 0 ≤ 1 := by
   #statesearch "v4.16.0"
   sorry
 
@@ -438,28 +434,21 @@ example : 0 ≤ 1 := by
 ```
 -/
 syntax (name := statesearch_search_tactic)
-  withPosition("#statesearch" (str)? (num)?) : tactic
+  withPosition("#statesearch" (str)?) : tactic
 
 @[tactic statesearch_search_tactic] def stateSearchTacticImpl : Tactic :=
   fun stx => withMainContext do
   let goal ← getMainGoal
   let state := (← Meta.ppGoal goal).pretty
+  let num_results := (statesearch.queries.get (← getOptions))
   match stx with
-  | `(tactic|#statesearch $rev:str $n:num) =>
-    let rev := rev.getString
-    let num_results := n.getNat
-    let results ← queryStateSearch state num_results rev
-    let suggestions := results.map SearchResult.toCommandSuggestion
-    TryThis.addSuggestions stx suggestions
   | `(tactic|#statesearch $rev:str) =>
     let rev := rev.getString
-    let num_results := 6
     let results ← queryStateSearch state num_results rev
     let suggestions := results.map SearchResult.toCommandSuggestion
     TryThis.addSuggestions stx suggestions
   | `(tactic|#statesearch) =>
     let rev := s!"v{Lean.versionString}"
-    let num_results := 6
     let results ← queryStateSearch state num_results rev
     let suggestions := results.map SearchResult.toCommandSuggestion
     TryThis.addSuggestions stx suggestions

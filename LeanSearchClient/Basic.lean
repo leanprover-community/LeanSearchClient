@@ -15,6 +15,11 @@ register_option loogle.queries : Nat :=
     group := "loogle"
     descr := "Number of results requested from loogle (default 6)" }
 
+register_option statesearch.queries : Nat :=
+  { defValue := 6
+    group := "statesearch"
+    descr := "Number of results requested from statesearch (default 6)" }
+
 register_option leansearchclient.useragent : String :=
   { defValue := "LeanSearchClient"
     group := "leansearchclient"
