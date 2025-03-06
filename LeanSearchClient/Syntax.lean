@@ -417,13 +417,14 @@ syntax (name := moogle_search_tactic)
   | _ => throwUnsupportedSyntax
 
 /-- Search [LeanStateSearch](https://premise-search.com) from within Lean.
-Your current main goal is sent as query. You can specify the revision
-and number of results, which are your current Lean version and 6 respectively
-by default.
+Your current main goal is sent as query. You can specify a revision. The number
+of results can be set using the `statesearch.queries` option.
 
 Hint: If you want to modify the query, you need to use the web interface.
 
 ```lean
+set_option statesearch.queries 1
+
 example : 0 ≤ 1 := by
   #statesearch "v4.16.0"
   sorry
