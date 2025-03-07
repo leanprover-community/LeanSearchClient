@@ -165,7 +165,7 @@ def ofLoogleJson? (js : Json) : Option SearchResult :=
 def ofStateSearchJson? (js : Json) : Option SearchResult :=
   match js.getObjValAs? String "name" with
   | Except.ok name =>
-      let type? := js.getObjValAs? String "type" |>.toOption
+      let type? := js.getObjValAs? String "formal_type" |>.toOption
       let doc? := js.getObjValAs? String "doc" |>.toOption
       let doc? := doc?.filter fun s => s != ""
       let kind? := js.getObjValAs? String "kind" |>.toOption
@@ -444,14 +444,37 @@ syntax (name := statesearch_search_tactic)
 @[tactic statesearch_search_tactic] def stateSearchTacticImpl : Tactic :=
   fun stx => withMainContext do
   let goal ← getMainGoal
+  let target ← getMainTarget
   let state := (← Meta.ppGoal goal).pretty
   let num_results := (statesearch.queries.get (← getOptions))
   let rev := (statesearch.revision.get (← getOptions))
   match stx with
   | `(tactic|#statesearch) =>
     let results ← queryStateSearch state num_results rev
-    let suggestions := results.map SearchResult.toCommandSuggestion
-    TryThis.addSuggestions stx suggestions
+    let suggestionGroups := results.map fun sr =>
+      let fullName := match sr.type? with
+      | some type => s!"{sr.name} (type: {type})"
+      | none => sr.name
+    (fullName, sr.toTacticSuggestions)
+    let mut foundValidTactic := false
+    for (name, sg) in suggestionGroups do
+        let sg ←  sg.filterM fun s =>
+          let sugTxt := s.suggestion
+          match sugTxt with
+          | .string s => do
+            let stx? := runParserCategory (← getEnv) `tactic s
+            match stx? with
+            | Except.ok stx =>
+              let n? ← checkTactic target stx
+              return n?.isSome
+            | Except.error _ =>
+              pure false
+          | _ => pure false
+        unless sg.isEmpty do
+          foundValidTactic := true
+          TryThis.addSuggestions stx sg (header := s!"From: {name}")
+    unless foundValidTactic do
+      TryThis.addSuggestions stx (results.map SearchResult.toCommandSuggestion)
   | _ => throwUnsupportedSyntax
 
 end LeanSearchClient
