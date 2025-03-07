@@ -46,6 +46,9 @@ initialize leanSearchCache :
 initialize moogleCache :
   IO.Ref (Std.HashMap String (Array Json)) ← IO.mkRef {}
 
+initialize stateSearchCache :
+  IO.Ref (Std.HashMap (String × Nat × String) (Array Json)) ← IO.mkRef {}
+
 def getLeanSearchQueryJson (s : String) (num_results : Nat := 6) : CoreM <| Array Json := do
   let cache ← leanSearchCache.get
   match cache.get? (s, num_results) with
@@ -88,6 +91,30 @@ def getMoogleQueryJson (s : String) (num_results : Nat := 6) : CoreM <| Array Js
         | Except.error e => IO.throwServerError s!"Could not obtain array from {js}; error: {e}"
     | _ => IO.throwServerError s!"Could not obtain data from {js}"
 
+def getStateSearchQueryJson (s : String) (num_results : Nat := 6) (rev : String) : CoreM <| Array Json := do
+  let cache ← stateSearchCache.get
+  match cache.get? (s, num_results, rev) with
+  | .some jsArr => return jsArr
+  | none => do
+    let apiUrl := "https://premise-search.com/api/search"
+    let s' := System.Uri.escapeUri s
+    let q := apiUrl ++ s!"?query={s'}&results={num_results}&rev={rev}"
+    let out ← IO.Process.output {cmd := "curl", args := #["-X", "GET", "--user-agent", ← useragent, q]}
+    let js ← match Json.parse out.stdout |>.toOption with
+      | some js => pure js
+      | none => IO.throwServerError s!"Could not contact LeanStateSearch server"
+    match js.getArr? with
+    | Except.ok jsArr => do
+      stateSearchCache.modify fun m => m.insert (s, num_results, rev) jsArr
+      return jsArr
+    | Except.error e =>
+      let .ok err := js.getObjVal? "error"
+        | IO.throwServerError s!"{e}"
+      let .ok schema := js.getObjVal? "schema"
+        | IO.throwServerError s!"{e}"
+      let .ok desc := schema.getObjVal? "description"
+        | IO.throwServerError s!"{e}"
+      IO.throwServerError s!"error: {err}\ndescription: {desc}"
 
 structure SearchResult where
   name : String
@@ -135,6 +162,16 @@ def ofLoogleJson? (js : Json) : Option SearchResult :=
       some {name := name, type? := type?, docString? := doc?, doc_url? := none, kind? := none}
   | _ => none
 
+def ofStateSearchJson? (js : Json) : Option SearchResult :=
+  match js.getObjValAs? String "name" with
+  | Except.ok name =>
+      let type? := js.getObjValAs? String "formal_type" |>.toOption
+      let doc? := js.getObjValAs? String "doc" |>.toOption
+      let doc? := doc?.filter fun s => s != ""
+      let kind? := js.getObjValAs? String "kind" |>.toOption
+      some {name := name, type? := type?, docString? := doc?, doc_url? := none, kind? := kind?}
+  | _ => none
+
 def toCommandSuggestion (sr : SearchResult) : TryThis.Suggestion :=
   let data := match sr.docString? with
     | some doc => s!"{doc}\n"
@@ -166,6 +203,11 @@ def queryMoogle (s : String) (num_results : Nat) :
     MetaM <| Array SearchResult := do
   let jsArr ← getMoogleQueryJson s num_results
   jsArr.filterMapM SearchResult.ofMoogleJson?
+
+def queryStateSearch (s : String) (num_results : Nat) (rev : String):
+    MetaM <| Array SearchResult := do
+  let jsArr ← getStateSearchQueryJson s num_results rev
+  return jsArr.filterMap SearchResult.ofStateSearchJson?
 
 def defaultTerm (expectedType? : Option Expr) : MetaM Expr := do
   match expectedType? with
@@ -379,3 +421,60 @@ syntax (name := moogle_search_tactic)
   | `(tactic|#moogle) => do
     logWarning moogleServer.incompleteSearchQuery
   | _ => throwUnsupportedSyntax
+
+/-- Search [LeanStateSearch](https://premise-search.com) from within Lean.
+Your current main goal is sent as query. The revision to search can be set
+using the `statesearch.revision` option. The number of results can be set
+using the `statesearch.queries` option.
+
+Hint: If you want to modify the query, you need to use the web interface.
+
+```lean
+set_option statesearch.queries 1
+set_option statesearch.revision "v4.16.0"
+
+example : 0 ≤ 1 := by
+  #statesearch
+  sorry
+```
+-/
+syntax (name := statesearch_search_tactic)
+  withPosition("#statesearch") : tactic
+
+@[tactic statesearch_search_tactic] def stateSearchTacticImpl : Tactic :=
+  fun stx => withMainContext do
+  let goal ← getMainGoal
+  let target ← getMainTarget
+  let state := (← Meta.ppGoal goal).pretty
+  let num_results := (statesearch.queries.get (← getOptions))
+  let rev := (statesearch.revision.get (← getOptions))
+  match stx with
+  | `(tactic|#statesearch) =>
+    let results ← queryStateSearch state num_results rev
+    let suggestionGroups := results.map fun sr =>
+      let fullName := match sr.type? with
+      | some type => s!"{sr.name} (type: {type})"
+      | none => sr.name
+    (fullName, sr.toTacticSuggestions)
+    let mut foundValidTactic := false
+    for (name, sg) in suggestionGroups do
+        let sg ←  sg.filterM fun s =>
+          let sugTxt := s.suggestion
+          match sugTxt with
+          | .string s => do
+            let stx? := runParserCategory (← getEnv) `tactic s
+            match stx? with
+            | Except.ok stx =>
+              let n? ← checkTactic target stx
+              return n?.isSome
+            | Except.error _ =>
+              pure false
+          | _ => pure false
+        unless sg.isEmpty do
+          foundValidTactic := true
+          TryThis.addSuggestions stx sg (header := s!"From: {name}")
+    unless foundValidTactic do
+      TryThis.addSuggestions stx (results.map SearchResult.toCommandSuggestion)
+  | _ => throwUnsupportedSyntax
+
+end LeanSearchClient
