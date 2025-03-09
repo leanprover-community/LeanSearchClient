@@ -77,3 +77,13 @@ example : 3 ≤ 5 := by
   #loogle Nat.succ_le_succ
   sorry
 ```
+
+## State Search
+
+The `#statesearch` tactic uses the current proof state for searching based on [LeanStateSearch API](https://premise-search.com). It can only be used as a tactic. Note that if no valid tactics are found, it will display command suggestions with search results.
+
+```lean
+example : 0 ≤ 1 := by
+  #statesearch
+  sorry
+```
