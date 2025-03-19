@@ -202,6 +202,7 @@ def queryLeanSearch (s : String) (num_results : Nat) :
 def queryMoogle (s : String) (num_results : Nat) :
     MetaM <| Array SearchResult := do
   let jsArr ← getMoogleQueryJson s num_results
+  let jsArr := jsArr.take num_results
   jsArr.filterMapM SearchResult.ofMoogleJson?
 
 def queryStateSearch (s : String) (num_results : Nat) (rev : String):
@@ -368,6 +369,37 @@ syntax (name := moogle_search_cmd) "#moogle" (str)? : command
     logWarning moogleServer.incompleteSearchQuery
   | _ => throwUnsupportedSyntax
 
+/-- Search either [Moogle](https://www.moogle.ai/api/search) or [LeanSearch]((https://leansearch.net/)) from within Lean, depending on the option `leansearchclient.backend`.
+Queries should be a string that ends with a `.` or `?`. This works as a command, as a term
+and as a tactic as in the following examples. In tactic mode, only valid tactics are displayed.
+
+```lean
+#search "If a natural number n is less than m, then the successor of n is less than the successor of m."
+
+example := #search "If a natural number n is less than m, then the successor of n is less than the successor of m."
+
+example : 3 ≤ 5 := by
+  #search "If a natural number n is less than m, then the successor of n is less than the successor of m."
+  sorry
+
+In tactic mode, if the query string is not supplied, then [LeanStateSearch](https://premise-search.com) is queried based on the goal state.
+```
+ -/
+syntax (name := search_cmd) "#search" (str)? : command
+@[command_elab search_cmd] def searchCommandImpl : CommandElab :=
+  fun stx => do
+  let server ←  match leansearchclient.backend.get (← getOptions) with
+  | "leansearch" => pure leanSearchServer
+  | "moogle" => pure moogleServer
+  | s => throwError s!"Invalid backend {s}, should be one of leansearch and moogle"
+  match stx with
+  | `(command| #search $s) => do
+    server.searchCommandSuggestions  stx s
+  | `(command| #search) => do
+    logWarning server.incompleteSearchQuery
+  | _ => throwUnsupportedSyntax
+
+
 @[inherit_doc leansearch_search_cmd]
 syntax (name := leansearch_search_term) "#leansearch" (str)? : term
 
@@ -393,6 +425,24 @@ syntax (name := moogle_search_term) "#moogle" (str)? : term
     defaultTerm expectedType?
   | `(#moogle) => do
     logWarning moogleServer.incompleteSearchQuery
+    defaultTerm expectedType?
+  | _ => throwUnsupportedSyntax
+
+@[inherit_doc search_cmd]
+syntax (name := search_term) "#search" (str)? : term
+
+@[term_elab search_term] def searchTermImpl : TermElab :=
+  fun stx expectedType? => do
+  let server ←  match leansearchclient.backend.get (← getOptions) with
+  | "leansearch" => pure leanSearchServer
+  | "moogle" => pure moogleServer
+  | s => throwError s!"Invalid backend {s}, should be one of leansearch and moogle"
+  match stx with
+  | `(#search $s) =>
+    server.searchTermSuggestions stx s
+    defaultTerm expectedType?
+  | `(#search) => do
+    logWarning server.incompleteSearchQuery
     defaultTerm expectedType?
   | _ => throwUnsupportedSyntax
 
@@ -475,6 +525,22 @@ syntax (name := statesearch_search_tactic)
           TryThis.addSuggestions stx sg (header := s!"From: {name}")
     unless foundValidTactic do
       TryThis.addSuggestions stx (results.map SearchResult.toCommandSuggestion)
+  | _ => throwUnsupportedSyntax
+
+@[inherit_doc search_cmd]
+syntax (name := search_tactic) "#search" (str)? : tactic
+
+@[tactic search_tactic] def searchTacticImpl : Tactic :=
+  fun stx => withMainContext do
+  match stx with
+  | `(tactic|#search $s) =>
+    let server ←  match leansearchclient.backend.get (← getOptions) with
+    | "leansearch" => pure leanSearchServer
+    | "moogle" => pure moogleServer
+    | s => throwError s!"Invalid backend {s}, should be one of leansearch and moogle"
+    server.searchTacticSuggestions stx s
+  | `(tactic|#search) => do
+    evalTactic (← `(tactic|#statesearch))
   | _ => throwUnsupportedSyntax
 
 end LeanSearchClient

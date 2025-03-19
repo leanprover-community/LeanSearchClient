@@ -29,3 +29,8 @@ register_option leansearchclient.useragent : String :=
   { defValue := "LeanSearchClient"
     group := "leansearchclient"
     descr := "Username for leansearchclient" }
+
+register_option leansearchclient.backend : String :=
+  { defValue := "leansearch"
+    group := "leansearchclient"
+    descr := "The backend to use by default, one of leansearch and moogle" }
