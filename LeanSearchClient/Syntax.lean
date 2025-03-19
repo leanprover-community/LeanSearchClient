@@ -374,12 +374,12 @@ Queries should be a string that ends with a `.` or `?`. This works as a command,
 and as a tactic as in the following examples. In tactic mode, only valid tactics are displayed.
 
 ```lean
-#moogle "If a natural number n is less than m, then the successor of n is less than the successor of m."
+#search "If a natural number n is less than m, then the successor of n is less than the successor of m."
 
-example := #moogle "If a natural number n is less than m, then the successor of n is less than the successor of m."
+example := #search "If a natural number n is less than m, then the successor of n is less than the successor of m."
 
 example : 3 ≤ 5 := by
-  #moogle "If a natural number n is less than m, then the successor of n is less than the successor of m."
+  #search "If a natural number n is less than m, then the successor of n is less than the successor of m."
   sorry
 
 In tactic mode, if the query string is not supplied, then [LeanStateSearch](https://premise-search.com) is queried based on the goal state.
