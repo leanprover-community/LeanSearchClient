@@ -23,9 +23,18 @@ example := #leansearch "If a natural number n is less than m, then the successor
 set_option leansearch.queries 1
 
 /--
-info: From: Nat.succ_lt_succ (type: ∀ {n m : Nat}, n < m → Nat.succ n < Nat.succ m)
-• apply Nat.succ_lt_succ
-• have : ∀ {n m : Nat}, n < m → Nat.succ n < Nat.succ m := Nat.succ_lt_succ
+info: LeanSearch: [{"result":
+  {"value": ":=\n  ⟨succ_lt_succ l.h⟩",
+   "type": "∀ (m n : ℕ) [l : Fin2.IsLT m n], Fin2.IsLT m.succ n.succ",
+   "signature": " (m n) [l : IsLT m n] : IsLT (succ m) (succ n)",
+   "name": ["Fin2", "IsLT", "succ"],
+   "module_name": ["Mathlib", "Data", "Fin", "Fin2"],
+   "kind": "instance",
+   "informal_name": "Successor preserves the less-than relation for natural numbers",
+   "informal_description":
+   "For natural numbers $m$ and $n$, if $m < n$ holds, then $\\mathrm{succ}(m) < \\mathrm{succ}(n)$ also holds.",
+   "docstring": null},
+  "distance": 0.0862322449684143}]
 ---
 warning: declaration uses 'sorry'
 -/
@@ -66,9 +75,18 @@ example := #search "If a natural number n is less than m, then the successor of 
 set_option leansearch.queries 1
 
 /--
-info: From: Nat.succ_lt_succ (type: ∀ {n m : Nat}, n < m → Nat.succ n < Nat.succ m)
-• apply Nat.succ_lt_succ
-• have : ∀ {n m : Nat}, n < m → Nat.succ n < Nat.succ m := Nat.succ_lt_succ
+info: LeanSearch: [{"result":
+  {"value": ":=\n  ⟨succ_lt_succ l.h⟩",
+   "type": "∀ (m n : ℕ) [l : Fin2.IsLT m n], Fin2.IsLT m.succ n.succ",
+   "signature": " (m n) [l : IsLT m n] : IsLT (succ m) (succ n)",
+   "name": ["Fin2", "IsLT", "succ"],
+   "module_name": ["Mathlib", "Data", "Fin", "Fin2"],
+   "kind": "instance",
+   "informal_name": "Successor preserves the less-than relation for natural numbers",
+   "informal_description":
+   "For natural numbers $m$ and $n$, if $m < n$ holds, then $\\mathrm{succ}(m) < \\mathrm{succ}(n)$ also holds.",
+   "docstring": null},
+  "distance": 0.0862322449684143}]
 ---
 warning: declaration uses 'sorry'
 -/

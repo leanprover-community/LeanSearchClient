@@ -54,19 +54,22 @@ def getLeanSearchQueryJson (s : String) (num_results : Nat := 6) : CoreM <| Arra
   match cache.get? (s, num_results) with
   | some jsArr => return jsArr
   | none => do
-    let apiUrl := "https://leansearch.net/api/search"
-    let s' := System.Uri.escapeUri s
-    let q := apiUrl ++ s!"?query={s'}&num_results={num_results}"
-    let out ← IO.Process.output {cmd := "curl", args := #["-X", "GET", "--user-agent", ← useragent, q]}
-    let js ← match Json.parse out.stdout |>.toOption with
-      | some js => pure js
-      | none => IO.throwServerError s!"Could not contact LeanSearch server"
+    let apiUrl := "https://leansearch.net/search"
+    -- let q := apiUrl ++ s!"?query={s'}&num_results={num_results}"
+    let js := Json.mkObj [("query", Json.arr #[toJson s]), ("num_results", num_results)]
+    let out ← IO.Process.output {cmd := "curl", args := #["-X", "POST", apiUrl, "--user-agent", ← useragent, "-H", "accept: application/json", "-H", "Content-Type: application/json", "--data", js.pretty]}
+    let js ← match Json.parse out.stdout with
+      | Except.ok js => pure js
+      | Except.error e => IO.throwServerError s!"Could not parse response from LeanSearch server, error: {e}"
     match js.getArr? with
     | Except.ok jsArr => do
-      leanSearchCache.modify fun m => m.insert (s, num_results) jsArr
-      return jsArr
+      match jsArr[0]!.getArr?  with
+        | Except.ok jsArr =>
+        leanSearchCache.modify fun m => m.insert (s, num_results) jsArr
+        return jsArr
+        | Except.error e => IO.throwServerError s!"Could not obtain inner array from {js}; error: {e}"
     | Except.error e =>
-      IO.throwServerError s!"Could not obtain array from {js}; error: {e}"
+      IO.throwServerError s!"Could not obtain outer array from {js}; error: {e}"
 
 def getMoogleQueryJson (s : String) (num_results : Nat := 6) : CoreM <| Array Json := do
   let cache ← moogleCache.get
@@ -127,15 +130,22 @@ structure SearchResult where
 namespace SearchResult
 
 def ofLeanSearchJson? (js : Json) : Option SearchResult :=
-  match js.getObjValAs? String "formal_name" with
-  | Except.ok name =>
-      let type? := js.getObjValAs? String "formal_type" |>.toOption
-      let doc? := js.getObjValAs? String "docstring" |>.toOption
-      let doc? := doc?.filter fun s => s != ""
-      let docurl? := js.getObjValAs? String "doc_url" |>.toOption
-      let kind? := js.getObjValAs? String "kind" |>.toOption
-      some {name := name, type? := type?, docString? := doc?, doc_url? := docurl?, kind? := kind?}
-  | _ => none
+  match js.getObjVal? "result" with
+  | Except.ok js =>
+    match js.getObjValAs? (List String) "name" with
+    | Except.ok nameList =>
+        let name := nameList.foldl (init := "") fun acc s =>
+          if acc == "" then s else acc ++ "." ++ s
+        let type? := js.getObjValAs? String "type" |>.toOption
+        let doc? := js.getObjValAs? String "docstring" |>.toOption
+        let doc? := doc?.filter fun s => s != ""
+        let docurl? := js.getObjValAs? String "doc_url" |>.toOption
+        let kind? := js.getObjValAs? String "kind" |>.toOption
+        some {name := name, type? := type?, docString? := doc?, doc_url? := docurl?, kind? := kind?}
+    | _ =>
+      none
+  | _ =>
+    none
 
 def ofMoogleJson? (js : Json) : MetaM <| Option SearchResult :=
   match js.getObjValAs? String "declarationName" with
@@ -197,6 +207,7 @@ end SearchResult
 def queryLeanSearch (s : String) (num_results : Nat) :
     MetaM <| Array SearchResult := do
   let jsArr ← getLeanSearchQueryJson s num_results
+  logInfo m!"LeanSearch: {jsArr}"
   return jsArr.filterMap SearchResult.ofLeanSearchJson?
 
 def queryMoogle (s : String) (num_results : Nat) :
