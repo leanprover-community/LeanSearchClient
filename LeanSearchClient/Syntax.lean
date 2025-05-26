@@ -54,7 +54,7 @@ def getLeanSearchQueryJson (s : String) (num_results : Nat := 6) : CoreM <| Arra
   match cache.get? (s, num_results) with
   | some jsArr => return jsArr
   | none => do
-    let apiUrl := "https://leansearch.net/search"
+    let apiUrl := (← IO.getEnv "LEANSEARCHCLIENT_LEANSEARCH_API_URL").getD "https://leansearch.net/search"
     -- let q := apiUrl ++ s!"?query={s'}&num_results={num_results}"
     let js := Json.mkObj [("query", Json.arr #[toJson s]), ("num_results", num_results)]
     let out ← IO.Process.output {cmd := "curl", args := #["-X", "POST", apiUrl, "--user-agent", ← useragent, "-H", "accept: application/json", "-H", "Content-Type: application/json", "--data", js.pretty]}
@@ -76,7 +76,7 @@ def getMoogleQueryJson (s : String) (num_results : Nat := 6) : CoreM <| Array Js
   match cache.get? s with
   | some jsArr => return jsArr
   | none => do
-  let apiUrl := "https://www.moogle.ai/api/search"
+  let apiUrl := (← IO.getEnv "LEANSEARCHCLIENT_MOOGLE_API_URL").getD "https://www.moogle.ai/api/search"
   let data := Json.arr
     #[Json.mkObj [("isFind", false), ("contents", s)]]
   let out ← IO.Process.output {cmd := "curl", args := #[apiUrl, "-H", "content-type: application/json",  "--user-agent", ← useragent, "--data", data.pretty]}
@@ -99,7 +99,7 @@ def getStateSearchQueryJson (s : String) (num_results : Nat := 6) (rev : String)
   match cache.get? (s, num_results, rev) with
   | .some jsArr => return jsArr
   | none => do
-    let apiUrl := "https://premise-search.com/api/search"
+    let apiUrl := (← IO.getEnv "LEANSEARCHCLIENT_LEANSTATESEARCH_API_URL").getD "https://premise-search.com/api/search"
     let s' := System.Uri.escapeUri s
     let q := apiUrl ++ s!"?query={s'}&results={num_results}&rev={rev}"
     let out ← IO.Process.output {cmd := "curl", args := #["-X", "GET", "--user-agent", ← useragent, q]}
@@ -343,6 +343,8 @@ example : 3 ≤ 5 := by
   #leansearch "If a natural number n is less than m, then the successor of n is less than the successor of m."
   sorry
 ```
+
+You can modify the LeanSearch URL by setting the `LEANSEARCHCLIENT_LEANSEARCH_API_URL` environment variable.
  -/
 syntax (name := leansearch_search_cmd) "#leansearch" (str)? : command
 
@@ -368,6 +370,8 @@ example : 3 ≤ 5 := by
   #moogle "If a natural number n is less than m, then the successor of n is less than the successor of m."
   sorry
 ```
+
+You can modify the Moogle URL by setting the `LEANSEARCHCLIENT_MOOGLE_API_URL` environment variable.
  -/
 syntax (name := moogle_search_cmd) "#moogle" (str)? : command
 
@@ -498,6 +502,8 @@ example : 0 ≤ 1 := by
   #statesearch
   sorry
 ```
+
+You can modify the LeanStateSearch URL by setting the `LEANSEARCHCLIENT_LEANSTATESEARCH_API_URL` environment variable.
 -/
 syntax (name := statesearch_search_tactic)
   withPosition("#statesearch") : tactic
