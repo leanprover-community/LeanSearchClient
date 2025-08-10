@@ -26,13 +26,13 @@ example : 3 ≤ 5 := by
 --   #loogle
 --   decide
 
-/-!
-More examples to test comments do not interfere with the search or caching.
--/
+-- /-!
+-- More examples to test comments do not interfere with the search or caching.
+-- -/
 
-#loogle ?a * _ < ?a * _ ↔ _
-#loogle ?a * _ < ?a * _ ↔ _ /- foo -/
-#loogle ?a * _ < ?a * _ ↔ _
+-- #loogle ?a * _ < ?a * _ ↔ _
+-- #loogle ?a * _ < ?a * _ ↔ _ /- foo -/
+-- #loogle ?a * _ < ?a * _ ↔ _
 
 
 -- comment

@@ -207,7 +207,6 @@ end SearchResult
 def queryLeanSearch (s : String) (num_results : Nat) :
     MetaM <| Array SearchResult := do
   let jsArr ← getLeanSearchQueryJson s num_results
-  logInfo m!"LeanSearch: {jsArr}"
   return jsArr.filterMap SearchResult.ofLeanSearchJson?
 
 def queryMoogle (s : String) (num_results : Nat) :
