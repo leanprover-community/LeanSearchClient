@@ -6,6 +6,7 @@ Authors: Siddhartha Gadgil
 import Lean.Elab.Tactic.Meta
 import Lean.Meta.Tactic.TryThis
 import LeanSearchClient.Basic
+import Lean.PremiseSelection
 
 /-!
 # LeanSearchClient
@@ -32,6 +33,14 @@ The corresponding syntax for Moogle is:
 In all cases results are displayed in the Lean Infoview and clicking these replaces the query text.
 In the cases of a query for tactics only valid tactics are displayed.
 -/
+
+/--
+Construct a `Selector` (which acts on an `MVarId`)
+from a function which takes the pretty printed goal.
+-/
+def Lean.PremiseSelection.ppSelector (selector : String → Config → MetaM (Array Suggestion)) (g : MVarId) (c : Config) :
+    MetaM (Array Suggestion) := do
+  selector (toString (← Meta.ppGoal g)) c
 
 namespace LeanSearchClient
 
@@ -94,6 +103,7 @@ def getMoogleQueryJson (s : String) (num_results : Nat := 6) : CoreM <| Array Js
         | Except.error e => IO.throwServerError s!"Could not obtain array from {js}; error: {e}"
     | _ => IO.throwServerError s!"Could not obtain data from {js}"
 
+-- TODO: Ask LeanStateSearch for expose scores, and include these in the results.
 def getStateSearchQueryJson (s : String) (num_results : Nat := 6) (rev : String) : CoreM <| Array Json := do
   let cache ← stateSearchCache.get
   match cache.get? (s, num_results, rev) with
@@ -125,6 +135,7 @@ structure SearchResult where
   docString? : Option String
   doc_url? : Option String
   kind? : Option String
+  score? : Option Float := none
   deriving Repr
 
 namespace SearchResult
@@ -245,8 +256,8 @@ def checkTactic (target : Expr) (tac : Syntax) :
 structure SearchServer where
   name : String
   url : String
-  cmd: String
-  query : String → Nat → MetaM  (Array SearchResult)
+  cmd : String
+  query : String → Nat → MetaM (Array SearchResult)
   queryNum : CoreM Nat
 
 def leanSearchServer : SearchServer :=
@@ -272,7 +283,7 @@ def getTermSuggestions (ss : SearchServer) (s : String) (num_results : Nat) :
   return suggestions.map SearchResult.toTermSuggestion
 
 def getTacticSuggestionGroups (ss : SearchServer) (s : String) (num_results : Nat) :
-    MetaM (Array (String ×  Array TryThis.Suggestion)) := do
+    MetaM (Array (String × Array TryThis.Suggestion)) := do
   let suggestions ← ss.query s num_results
   return suggestions.map fun sr =>
     let fullName := match sr.type? with
@@ -285,7 +296,7 @@ def incompleteSearchQuery (ss : SearchServer) : String :=
    Note this command sends your query to an external service at {ss.url}."
 
 open Command
-def searchCommandSuggestions (ss: SearchServer) (stx: Syntax) (s: TSyntax `str) : CommandElabM Unit := Command.liftTermElabM do
+def searchCommandSuggestions (ss : SearchServer) (stx: Syntax) (s: TSyntax `str) : CommandElabM Unit := Command.liftTermElabM do
     let s := s.getString
     if s.endsWith "." || s.endsWith "?" then
       let suggestions ← ss.getCommandSuggestions s (← ss.queryNum)
@@ -328,7 +339,23 @@ def searchTacticSuggestions (ss : SearchServer) (stx : Syntax) (s : TSyntax `str
 
 end SearchServer
 
+section Selector
+open Lean.PremiseSelection
+
+/-- Construct a `Lean.PremiseSelection.Selector` from a query function. -/
+def mkSelector (query : String → Nat → MetaM (Array SearchResult)) : Selector := ppSelector <| fun g c => do
+  let suggestions ← query g (c.maxSuggestions.getD 100)
+  return suggestions.map fun s =>
+    { name := s.name.toName, score := s.score?.getD 1.0 }
+
+/-- Construct a `Lean.PremiseSelection.Selector` backed by LeanStateSearch. -/
+-- TODO: work out how to keep the revision up to date.
+def leanStateSearchSelector : Selector := mkSelector (fun g i => queryStateSearch g i s!"v4.22.0")
+
+end Selector
+
 open Command
+
 /-- Search [LeanSearch](https://leansearch.net/) from within Lean.
 Queries should be a string that ends with a `.` or `?`. This works as a command, as a term
 and as a tactic as in the following examples. In tactic mode, only valid tactics are displayed.
