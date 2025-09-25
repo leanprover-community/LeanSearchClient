@@ -302,14 +302,14 @@ def searchTermSuggestions (ss: SearchServer) (stx: Syntax)
     else
       logWarning <| ss.incompleteSearchQuery
 
-def searchTacticSuggestions (ss: SearchServer) (stx: Syntax) (s: TSyntax `str) : TacticM Unit := do
+def searchTacticSuggestions (ss : SearchServer) (stx : Syntax) (s : TSyntax `str) : TacticM Unit := do
     let s := s.getString
     if s.endsWith "." || s.endsWith "?" then
       let target ← getMainTarget
       let suggestionGroups ←
           ss.getTacticSuggestionGroups s (← ss.queryNum)
       for (name, sg) in suggestionGroups do
-        let sg ←  sg.filterM fun s =>
+        let sg ← sg.filterM fun s =>
           let sugTxt := s.suggestion
           match sugTxt with
           | .string s => do
@@ -524,7 +524,7 @@ syntax (name := statesearch_search_tactic)
     (fullName, sr.toTacticSuggestions)
     let mut foundValidTactic := false
     for (name, sg) in suggestionGroups do
-        let sg ←  sg.filterM fun s =>
+        let sg ← sg.filterM fun s =>
           let sugTxt := s.suggestion
           match sugTxt with
           | .string s => do
@@ -550,7 +550,7 @@ syntax (name := search_tactic) "#search" (str)? : tactic
   fun stx => withMainContext do
   match stx with
   | `(tactic|#search $s) =>
-    let server ←  match leansearchclient.backend.get (← getOptions) with
+    let server ← match leansearchclient.backend.get (← getOptions) with
     | "leansearch" => pure leanSearchServer
     | "moogle" => pure moogleServer
     | s => throwError s!"Invalid backend {s}, should be one of leansearch and moogle"
