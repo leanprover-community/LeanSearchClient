@@ -12,8 +12,7 @@ import LeanSearchClient.Syntax
 /-!
 # LeanSearchClient
 
-In this file, we provide syntax for search using the [leansearch API](https://leansearch.net/)
-and the [Moogle API](https://www.moogle.ai/api/search).
+In this file, we provide syntax for search using the [leansearch API](https://leansearch.net/).
 from within Lean. It allows you to search for Lean tactics and theorems using natural language.
 
 We provide syntax to make a query and generate `TryThis` options to click or
@@ -24,12 +23,6 @@ The queries are of three forms. For leansearch these are:
 * `Command` syntax: `#leansearch "search query"` as a command.
 * `Term` syntax: `#leansearch "search query"` as a term.
 * `Tactic` syntax: `#leansearch "search query"` as a tactic.
-
-The corresponding syntax for Moogle is:
-
-* `Command` syntax: `#moogle "search query"` as a command.
-* `Term` syntax: `#moogle "search query"` as a term.
-* `Tactic` syntax: `#moogle "search query"` as a tactic.
 
 In all cases results are displayed in the Lean Infoview and clicking these replaces the query text.
 In the cases of a query for tactics only valid tactics are displayed.

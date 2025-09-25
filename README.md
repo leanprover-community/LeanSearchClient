@@ -1,6 +1,6 @@
 # LeanSearchClient
 
-LeanSearchClient provides syntax for search using the [leansearch API](https://leansearch.net/), the [Moogle API](https://www.moogle.ai/api/search), and the [LeanStateSearch](https://premise-search.com) API from within Lean. It allows you to search for Lean tactics and theorems using natural language. It also allows searches on [Loogle](https://loogle.lean-lang.org/json) from within Lean.
+LeanSearchClient provides syntax for search using the [leansearch API](https://leansearch.net/) and the [LeanStateSearch](https://premise-search.com) API from within Lean. It allows you to search for Lean tactics and theorems using natural language. It also allows searches on [Loogle](https://loogle.lean-lang.org/json) from within Lean.
 
 We provide syntax to make a query and generate `TryThis` options to click or use a code action to use the results. The queries are of four forms:
 
@@ -25,20 +25,11 @@ The common command for all backends:
 #search "If a natural number n is less than m, then the successor of n is less than the successor of m."
 ```
 
-We also have commands for specific backends. For `leansearch`:
+We also have commands for specific backend:
 
 ```lean
 #leansearch "If a natural number n is less than m, then the successor of n is less than the successor of m."
 ```
-
-For `moogle`:
-
-```lean
-#moogle "If a natural number n is less than m, then the successor of n is less than the successor of m."
-```
-
-
-
 
 ### Query Term
 
@@ -55,18 +46,11 @@ For `leansearch`:
 example := #leansearch "If a natural number n is less than m, then the successor of n is less than the successor of m."
 ```
 
-For `moogle`:
-
-```lean
-example := #moogle "If a natural number n is less than m, then the successor of n is less than the successor of m."
-```
-
-
 ### Query Tactic
 
 Note that only valid tactics are displayed.
 
-The general command has two variants. With a string, calling either LeanSearch or Moogle:
+The general command has two variants. With a string, calling either LeanSearch:
 
 ```lean
 example : 3 ≤ 5 := by
@@ -89,14 +73,6 @@ For `leansearch`:
 ```lean
 example : 3 ≤ 5 := by
   #leansearch "If a natural number n is less than m, then the successor of n is less than the successor of m."
-  sorry
-```
-
-For `moogle`:
-
-```lean
-example : 3 ≤ 5 := by
-  #moogle "If a natural number n is less than m, then the successor of n is less than the successor of m."
   sorry
 ```
 

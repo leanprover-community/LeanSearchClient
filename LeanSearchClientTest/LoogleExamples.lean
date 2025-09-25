@@ -40,7 +40,8 @@ example : 3 ≤ 5 := by
 
 /--
 info: Loogle Search Results
-• #check Option.get!
+  • #check Option.get! --  {α : Type u} [Inhabited α] : Option α → α
+    Extracts the value from an `Option`, panicking on `none`.
 -/
 #guard_msgs in
   #loogle Option ?a → ?a, "get!"
