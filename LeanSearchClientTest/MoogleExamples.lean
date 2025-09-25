@@ -20,17 +20,19 @@ Note this command sends your query to an external service at https://www.moogle.
 #guard_msgs in
 example := #moogle "If a natural number n is less than m, then the successor of n is less than the successor of m"
 
-set_option moogle.queries 1 in
-/--
-info: From: Nat.lt (type: Nat → Nat → Prop)
-• have : Nat → Nat → Prop := Nat.lt
----
-warning: declaration uses 'sorry'
--/
-#guard_msgs in
-example : 3 ≤ 5 := by
-  #moogle "If a natural number n is less than m, then the successor of n is less than the successor of m."
-  sorry
+-- As of 2025-09-25, Moogle is down.
+
+-- set_option moogle.queries 1 in
+-- /--
+-- info: From: Nat.lt (type: Nat → Nat → Prop)
+-- • have : Nat → Nat → Prop := Nat.lt
+-- ---
+-- warning: declaration uses 'sorry'
+-- -/
+-- #guard_msgs in
+-- example : 3 ≤ 5 := by
+--   #moogle "If a natural number n is less than m, then the successor of n is less than the successor of m."
+--   sorry
 
 /-!
 ## Moogle queries using `search`
@@ -53,13 +55,15 @@ example := #search "If a natural number n is less than m, then the successor of 
 
 set_option moogle.queries 1
 
-/--
-info: From: Nat.lt (type: Nat → Nat → Prop)
-• have : Nat → Nat → Prop := Nat.lt
----
-warning: declaration uses 'sorry'
--/
-#guard_msgs in
-example : 3 ≤ 5 := by
-  #search "If a natural number n is less than m, then the successor of n is less than the successor of m."
-  sorry
+-- As of 2025-09-25, Moogle is down.
+
+-- /--
+-- info: From: Nat.lt (type: Nat → Nat → Prop)
+-- • have : Nat → Nat → Prop := Nat.lt
+-- ---
+-- warning: declaration uses 'sorry'
+-- -/
+-- #guard_msgs in
+-- example : 3 ≤ 5 := by
+--   #search "If a natural number n is less than m, then the successor of n is less than the successor of m."
+--   sorry
