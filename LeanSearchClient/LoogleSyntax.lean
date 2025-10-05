@@ -146,8 +146,8 @@ If you pass more than one such search filter, separated by commas Loogle will re
 woould find all lemmas which mention the constants Real.sin and tsum, have \"two\" as a substring of the lemma name, include a product and a power somewhere in the type, and have a hypothesis of the form _ < _ (if there were any such lemmas). Metavariables (?a) are assigned independently in each filter."
 
 open Lean.Parser
-private def unicode_turnstile := nonReservedSymbol "⊢ "
-private def ascii_turnstile := nonReservedSymbol "|- "
+def unicode_turnstile := nonReservedSymbol "⊢ "
+def ascii_turnstile := nonReservedSymbol "|- "
 
 /-- The turnstyle uesd bin `#find`, unicode or ascii allowed -/
 syntax turnstyle := patternIgnore(unicode_turnstile <|> ascii_turnstile)

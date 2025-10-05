@@ -8,6 +8,8 @@ module
 public meta import Lean.Elab.Tactic.Meta
 public meta import Lean.Meta.Tactic.TryThis
 public meta import LeanSearchClient.Basic
+public meta import Lean.Server.Utils
+public meta import Lean.Elab.Command
 
 public meta section
 
