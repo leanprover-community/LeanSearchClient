@@ -3,11 +3,15 @@ Copyright (c) 2024 Siddhartha Gadgil. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Siddhartha Gadgil
 -/
-import Lean.Elab.Tactic.Meta
-import Lean.Parser.Basic
-import Lean.Meta.Tactic.TryThis
-import LeanSearchClient.Basic
-import LeanSearchClient.Syntax
+module
+
+public meta import Lean.Elab.Tactic.Meta
+public meta import Lean.Parser.Basic
+public meta import Lean.Meta.Tactic.TryThis
+public meta import LeanSearchClient.Basic
+public meta import LeanSearchClient.Syntax
+
+public meta section
 
 /-!
 # LeanSearchClient
