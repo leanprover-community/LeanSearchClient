@@ -22,7 +22,13 @@ example := #leansearch "If a natural number n is less than m, then the successor
 
 set_option leansearch.queries 1
 
-/-- warning: declaration uses 'sorry' -/
+/--
+info: From: Nat.le_of_succ_le_succ (type: ∀ {n m : Nat}, LE.le n.succ m.succ → LE.le n m)
+• apply Nat.le_of_succ_le_succ
+• have : ∀ {n m : Nat}, LE.le n.succ m.succ → LE.le n m := Nat.le_of_succ_le_succ
+---
+warning: declaration uses 'sorry'
+-/
 #guard_msgs in
 example : 3 ≤ 5 := by
   #leansearch "If a natural number n is less than m, then the successor of n is less than the successor of m."
@@ -59,7 +65,13 @@ example := #search "If a natural number n is less than m, then the successor of 
 
 set_option leansearch.queries 1
 
-/-- warning: declaration uses 'sorry' -/
+/--
+info: From: Nat.le_of_succ_le_succ (type: ∀ {n m : Nat}, LE.le n.succ m.succ → LE.le n m)
+• apply Nat.le_of_succ_le_succ
+• have : ∀ {n m : Nat}, LE.le n.succ m.succ → LE.le n m := Nat.le_of_succ_le_succ
+---
+warning: declaration uses 'sorry'
+-/
 #guard_msgs in
 example : 3 ≤ 5 := by
   #search "If a natural number n is less than m, then the successor of n is less than the successor of m."
@@ -77,6 +89,6 @@ example : 3 ≤ 5 := #search
 
 set_option leansearchclient.backend "magic"
 
-/-- error: Invalid backend magic, should be one of leansearch and moogle -/
+/-- error: Invalid backend magic, must be leansearch -/
 #guard_msgs in
 #search "Every slice knot is ribbon."
