@@ -50,7 +50,7 @@ example := #leansearch "If a natural number n is less than m, then the successor
 
 Note that only valid tactics are displayed.
 
-The general command has two variants. With a string, calling either LeanSearch:
+The general command has two variants. With a string, calling LeanSearch:
 
 ```lean
 example : 3 ≤ 5 := by
