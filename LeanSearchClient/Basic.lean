@@ -5,11 +5,6 @@ register_option leansearch.queries : Nat :=
     group := "leansearch"
     descr := "Number of results requested from leansearch (default 6)" }
 
-register_option moogle.queries : Nat :=
-  { defValue := 6
-    group := "moogle"
-    descr := "Number of results requested from moogle (default 6)" }
-
 register_option loogle.queries : Nat :=
   { defValue := 6
     group := "loogle"
@@ -33,4 +28,4 @@ register_option leansearchclient.useragent : String :=
 register_option leansearchclient.backend : String :=
   { defValue := "leansearch"
     group := "leansearchclient"
-    descr := "The backend to use by default, one of leansearch and moogle" }
+    descr := "The backend to use by default, currently only leansearch" }

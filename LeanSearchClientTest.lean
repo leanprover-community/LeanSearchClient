@@ -1,2 +1,1 @@
 import LeanSearchClientTest.Examples
-import LeanSearchClientTest.MoogleExamples
