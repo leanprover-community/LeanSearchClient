@@ -1,4 +1,8 @@
-import Lean.Data.Options
+module
+
+public meta import Lean.Data.Options
+
+public meta section
 
 register_option leansearch.queries : Nat :=
   { defValue := 6
