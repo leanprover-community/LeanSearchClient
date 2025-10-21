@@ -1,4 +1,8 @@
-import LeanSearchClient.LoogleSyntax
+module
+
+public meta import LeanSearchClient.LoogleSyntax
+
+public meta section
 
 /-!
 # Loogle Examples

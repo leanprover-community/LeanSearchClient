@@ -1,1 +1,3 @@
-import LeanSearchClientTest.Examples
+module
+
+public meta import LeanSearchClientTest.Examples
