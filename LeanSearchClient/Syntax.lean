@@ -3,15 +3,20 @@ Copyright (c) 2024 Siddhartha Gadgil. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Siddhartha Gadgil
 -/
-import Lean.Elab.Tactic.Meta
-import Lean.Meta.Tactic.TryThis
-import LeanSearchClient.Basic
+module
+
+public meta import Lean.Elab.Tactic.Meta
+public meta import Lean.Meta.Tactic.TryThis
+public meta import LeanSearchClient.Basic
+public meta import Lean.Server.Utils
+public meta import Lean.Elab.Command
+
+public meta section
 
 /-!
 # LeanSearchClient
 
-In this file, we provide syntax for search using the [leansearch API](https://leansearch.net/)
-and the [Moogle API](https://www.moogle.ai/api/search).
+In this file, we provide syntax for search using the [leansearch API](https://leansearch.net/).
 from within Lean. It allows you to search for Lean tactics and theorems using natural language.
 
 We provide syntax to make a query and generate `TryThis` options to click or
@@ -22,12 +27,6 @@ The queries are of three forms. For leansearch these are:
 * `Command` syntax: `#leansearch "search query"` as a command.
 * `Term` syntax: `#leansearch "search query"` as a term.
 * `Tactic` syntax: `#leansearch "search query"` as a tactic.
-
-The corresponding syntax for Moogle is:
-
-* `Command` syntax: `#moogle "search query"` as a command.
-* `Term` syntax: `#moogle "search query"` as a term.
-* `Tactic` syntax: `#moogle "search query"` as a tactic.
 
 In all cases results are displayed in the Lean Infoview and clicking these replaces the query text.
 In the cases of a query for tactics only valid tactics are displayed.
@@ -42,9 +41,6 @@ def useragent : CoreM String :=
 
 initialize leanSearchCache :
   IO.Ref (Std.HashMap (String × Nat) (Array Json)) ← IO.mkRef {}
-
-initialize moogleCache :
-  IO.Ref (Std.HashMap String (Array Json)) ← IO.mkRef {}
 
 initialize stateSearchCache :
   IO.Ref (Std.HashMap (String × Nat × String) (Array Json)) ← IO.mkRef {}
@@ -70,29 +66,6 @@ def getLeanSearchQueryJson (s : String) (num_results : Nat := 6) : CoreM <| Arra
         | Except.error e => IO.throwServerError s!"Could not obtain inner array from {js}; error: {e}"
     | Except.error e =>
       IO.throwServerError s!"Could not obtain outer array from {js}; error: {e}"
-
-def getMoogleQueryJson (s : String) (num_results : Nat := 6) : CoreM <| Array Json := do
-  let cache ← moogleCache.get
-  match cache.get? s with
-  | some jsArr => return jsArr
-  | none => do
-  let apiUrl := (← IO.getEnv "LEANSEARCHCLIENT_MOOGLE_API_URL").getD "https://www.moogle.ai/api/search"
-  let data := Json.arr
-    #[Json.mkObj [("isFind", false), ("contents", s)]]
-  let out ← IO.Process.output {cmd := "curl", args := #[apiUrl, "-H", "content-type: application/json",  "--user-agent", ← useragent, "--data", data.pretty]}
-  match Json.parse out.stdout with
-  | Except.error _ =>
-    throwError m!"Could not contact Moogle server"
-  | Except.ok js =>
-  let result? := js.getObjValAs?  Json "data"
-  match result? with
-    | Except.ok result =>
-        match result.getArr? with
-        | Except.ok arr =>
-            moogleCache.modify fun m => m.insert s arr
-            return arr[0:num_results]
-        | Except.error e => IO.throwServerError s!"Could not obtain array from {js}; error: {e}"
-    | _ => IO.throwServerError s!"Could not obtain data from {js}"
 
 def getStateSearchQueryJson (s : String) (num_results : Nat := 6) (rev : String) : CoreM <| Array Json := do
   let cache ← stateSearchCache.get
@@ -147,22 +120,6 @@ def ofLeanSearchJson? (js : Json) : Option SearchResult :=
   | _ =>
     none
 
-def ofMoogleJson? (js : Json) : MetaM <| Option SearchResult :=
-  match js.getObjValAs? String "declarationName" with
-  | Except.ok name => do
-      let type? ←
-        try
-          let info ←  getConstInfo name.toName
-          let fmt ← PrettyPrinter.ppExpr info.type
-          pure <| some fmt.pretty
-        catch _ =>
-          pure none
-      let doc? := js.getObjValAs? String "declarationDocString" |>.toOption
-      let doc? := doc?.filter fun s => s != ""
-      let kind? := js.getObjValAs? String "declarationType" |>.toOption
-      return some {name := name, type? := type?, docString? := doc?, doc_url? := none, kind? := kind?}
-  | _ => return none
-
 def ofLoogleJson? (js : Json) : Option SearchResult :=
   match js.getObjValAs? String "name" with
   | Except.ok name =>
@@ -209,12 +166,6 @@ def queryLeanSearch (s : String) (num_results : Nat) :
   let jsArr ← getLeanSearchQueryJson s num_results
   return jsArr.filterMap SearchResult.ofLeanSearchJson?
 
-def queryMoogle (s : String) (num_results : Nat) :
-    MetaM <| Array SearchResult := do
-  let jsArr ← getMoogleQueryJson s num_results
-  let jsArr := jsArr.take num_results
-  jsArr.filterMapM SearchResult.ofMoogleJson?
-
 def queryStateSearch (s : String) (num_results : Nat) (rev : String):
     MetaM <| Array SearchResult := do
   let jsArr ← getStateSearchQueryJson s num_results rev
@@ -252,10 +203,6 @@ structure SearchServer where
 def leanSearchServer : SearchServer :=
   {name := "LeanSearch", cmd := "#leansearch", url := "https://leansearch.net/",
    query := queryLeanSearch, queryNum := return leansearch.queries.get (← getOptions)}
-
-def moogleServer : SearchServer :=
-  {name := "Moogle", cmd := "#moogle", url := "https://www.moogle.ai/api/search",
-   query := queryMoogle, queryNum := return moogle.queries.get (← getOptions)}
 
 instance : Inhabited SearchServer := ⟨leanSearchServer⟩
 
@@ -356,34 +303,7 @@ syntax (name := leansearch_search_cmd) "#leansearch" (str)? : command
     logWarning leanSearchServer.incompleteSearchQuery
   | _ => throwUnsupportedSyntax
 
-/-- Search [Moogle](https://www.moogle.ai/api/search) from within Lean.
-Queries should be a string that ends with a `.` or `?`. This works as a command, as a term
-and as a tactic as in the following examples. In tactic mode, only valid tactics are displayed.
-
-```lean
-#moogle "If a natural number n is less than m, then the successor of n is less than the successor of m."
-
-example := #moogle "If a natural number n is less than m, then the successor of n is less than the successor of m."
-
-example : 3 ≤ 5 := by
-  #moogle "If a natural number n is less than m, then the successor of n is less than the successor of m."
-  sorry
-```
-
-You can modify the Moogle URL by setting the `LEANSEARCHCLIENT_MOOGLE_API_URL` environment variable.
- -/
-syntax (name := moogle_search_cmd) "#moogle" (str)? : command
-
-@[command_elab moogle_search_cmd] def moogleCommandImpl : CommandElab :=
-  fun stx =>
-  match stx with
-  | `(command| #moogle $s) => do
-    moogleServer.searchCommandSuggestions  stx s
-  | `(command| #moogle) => do
-    logWarning moogleServer.incompleteSearchQuery
-  | _ => throwUnsupportedSyntax
-
-/-- Search either [Moogle](https://www.moogle.ai/api/search) or [LeanSearch]((https://leansearch.net/)) from within Lean, depending on the option `leansearchclient.backend`.
+/-- Search from within Lean, depending on the option `leansearchclient.backend` (currently only leansearch).
 Queries should be a string that ends with a `.` or `?`. This works as a command, as a term
 and as a tactic as in the following examples. In tactic mode, only valid tactics are displayed.
 
@@ -404,8 +324,7 @@ syntax (name := search_cmd) "#search" (str)? : command
   fun stx => do
   let server ←  match leansearchclient.backend.get (← getOptions) with
   | "leansearch" => pure leanSearchServer
-  | "moogle" => pure moogleServer
-  | s => throwError s!"Invalid backend {s}, should be one of leansearch and moogle"
+  | s => throwError s!"Invalid backend {s}, must be leansearch"
   match stx with
   | `(command| #search $s) => do
     server.searchCommandSuggestions  stx s
@@ -428,20 +347,6 @@ syntax (name := leansearch_search_term) "#leansearch" (str)? : term
     defaultTerm expectedType?
   | _ => throwUnsupportedSyntax
 
-@[inherit_doc moogle_search_cmd]
-syntax (name := moogle_search_term) "#moogle" (str)? : term
-
-@[term_elab moogle_search_term] def moogleTermImpl : TermElab :=
-  fun stx expectedType? => do
-  match stx with
-  | `(#moogle $s) =>
-    moogleServer.searchTermSuggestions stx s
-    defaultTerm expectedType?
-  | `(#moogle) => do
-    logWarning moogleServer.incompleteSearchQuery
-    defaultTerm expectedType?
-  | _ => throwUnsupportedSyntax
-
 @[inherit_doc search_cmd]
 syntax (name := search_term) "#search" (str)? : term
 
@@ -449,8 +354,7 @@ syntax (name := search_term) "#search" (str)? : term
   fun stx expectedType? => do
   let server ←  match leansearchclient.backend.get (← getOptions) with
   | "leansearch" => pure leanSearchServer
-  | "moogle" => pure moogleServer
-  | s => throwError s!"Invalid backend {s}, should be one of leansearch and moogle"
+  | s => throwError s!"Invalid backend {s}, should be leansearch"
   match stx with
   | `(#search $s) =>
     server.searchTermSuggestions stx s
@@ -471,19 +375,6 @@ syntax (name := leansearch_search_tactic)
     leanSearchServer.searchTacticSuggestions stx s
   | `(tactic|#leansearch) => do
     logWarning leanSearchServer.incompleteSearchQuery
-  | _ => throwUnsupportedSyntax
-
-@[inherit_doc moogle_search_cmd]
-syntax (name := moogle_search_tactic)
-  withPosition("#moogle" (colGt str)?) : tactic
-
-@[tactic moogle_search_tactic] def moogleTacticImpl : Tactic :=
-  fun stx => withMainContext do
-  match stx with
-  | `(tactic|#moogle $s) =>
-    moogleServer.searchTacticSuggestions stx s
-  | `(tactic|#moogle) => do
-    logWarning moogleServer.incompleteSearchQuery
   | _ => throwUnsupportedSyntax
 
 /-- Search [LeanStateSearch](https://premise-search.com) from within Lean.
@@ -552,8 +443,7 @@ syntax (name := search_tactic) "#search" (str)? : tactic
   | `(tactic|#search $s) =>
     let server ← match leansearchclient.backend.get (← getOptions) with
     | "leansearch" => pure leanSearchServer
-    | "moogle" => pure moogleServer
-    | s => throwError s!"Invalid backend {s}, should be one of leansearch and moogle"
+    | s => throwError s!"Invalid backend {s}, should be leansearch"
     server.searchTacticSuggestions stx s
   | `(tactic|#search) => do
     evalTactic (← `(tactic|#statesearch))

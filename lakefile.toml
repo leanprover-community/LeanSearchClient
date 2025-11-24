@@ -1,6 +1,7 @@
 name = "LeanSearchClient"
 testDriver = "LeanSearchClientTest"
 defaultTargets = ["LeanSearchClient"]
+leanOptions = { experimental.module = true }
 
 [[lean_lib]]
 name = "LeanSearchClient"

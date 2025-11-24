@@ -1,2 +1,3 @@
-import LeanSearchClientTest.Examples
-import LeanSearchClientTest.MoogleExamples
+module
+
+public meta import LeanSearchClientTest.Examples

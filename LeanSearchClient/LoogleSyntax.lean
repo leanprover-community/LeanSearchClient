@@ -3,17 +3,20 @@ Copyright (c) 2024 Siddhartha Gadgil. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Siddhartha Gadgil
 -/
-import Lean.Elab.Tactic.Meta
-import Lean.Parser.Basic
-import Lean.Meta.Tactic.TryThis
-import LeanSearchClient.Basic
-import LeanSearchClient.Syntax
+module
+
+public meta import Lean.Elab.Tactic.Meta
+public meta import Lean.Parser.Basic
+public meta import Lean.Meta.Tactic.TryThis
+public meta import LeanSearchClient.Basic
+public meta import LeanSearchClient.Syntax
+
+public meta section
 
 /-!
 # LeanSearchClient
 
-In this file, we provide syntax for search using the [leansearch API](https://leansearch.net/)
-and the [Moogle API](https://www.moogle.ai/api/search).
+In this file, we provide syntax for search using the [leansearch API](https://leansearch.net/).
 from within Lean. It allows you to search for Lean tactics and theorems using natural language.
 
 We provide syntax to make a query and generate `TryThis` options to click or
@@ -24,12 +27,6 @@ The queries are of three forms. For leansearch these are:
 * `Command` syntax: `#leansearch "search query"` as a command.
 * `Term` syntax: `#leansearch "search query"` as a term.
 * `Tactic` syntax: `#leansearch "search query"` as a tactic.
-
-The corresponding syntax for Moogle is:
-
-* `Command` syntax: `#moogle "search query"` as a command.
-* `Term` syntax: `#moogle "search query"` as a term.
-* `Tactic` syntax: `#moogle "search query"` as a tactic.
 
 In all cases results are displayed in the Lean Infoview and clicking these replaces the query text.
 In the cases of a query for tactics only valid tactics are displayed.
@@ -142,8 +139,8 @@ If you pass more than one such search filter, separated by commas Loogle will re
 woould find all lemmas which mention the constants Real.sin and tsum, have \"two\" as a substring of the lemma name, include a product and a power somewhere in the type, and have a hypothesis of the form _ < _ (if there were any such lemmas). Metavariables (?a) are assigned independently in each filter."
 
 open Lean.Parser
-private def unicode_turnstile := nonReservedSymbol "⊢ "
-private def ascii_turnstile := nonReservedSymbol "|- "
+def unicode_turnstile := nonReservedSymbol "⊢ "
+def ascii_turnstile := nonReservedSymbol "|- "
 
 /-- The turnstyle uesd bin `#find`, unicode or ascii allowed -/
 syntax turnstyle := patternIgnore(unicode_turnstile <|> ascii_turnstile)

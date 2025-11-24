@@ -1,4 +1,8 @@
-import LeanSearchClient.Syntax
+module
+
+public meta import LeanSearchClient.Syntax
+
+public meta section
 
 /-!
 # Lean Search Examples
@@ -24,8 +28,8 @@ set_option leansearch.queries 1
 
 /--
 info: From: Nat.le_of_succ_le_succ (type: ∀ {n m : Nat}, LE.le n.succ m.succ → LE.le n m)
-• apply Nat.le_of_succ_le_succ
-• have : ∀ {n m : Nat}, LE.le n.succ m.succ → LE.le n m := Nat.le_of_succ_le_succ
+  [apply] apply Nat.le_of_succ_le_succ
+  [apply] have : ∀ {n m : Nat}, LE.le n.succ m.succ → LE.le n m := Nat.le_of_succ_le_succ
 ---
 warning: declaration uses 'sorry'
 -/
@@ -67,8 +71,8 @@ set_option leansearch.queries 1
 
 /--
 info: From: Nat.le_of_succ_le_succ (type: ∀ {n m : Nat}, LE.le n.succ m.succ → LE.le n m)
-• apply Nat.le_of_succ_le_succ
-• have : ∀ {n m : Nat}, LE.le n.succ m.succ → LE.le n m := Nat.le_of_succ_le_succ
+  [apply] apply Nat.le_of_succ_le_succ
+  [apply] have : ∀ {n m : Nat}, LE.le n.succ m.succ → LE.le n m := Nat.le_of_succ_le_succ
 ---
 warning: declaration uses 'sorry'
 -/
@@ -89,6 +93,6 @@ example : 3 ≤ 5 := #search
 
 set_option leansearchclient.backend "magic"
 
-/-- error: Invalid backend magic, should be one of leansearch and moogle -/
+/-- error: Invalid backend magic, must be leansearch -/
 #guard_msgs in
 #search "Every slice knot is ribbon."

@@ -1,4 +1,8 @@
-import LeanSearchClient.Syntax
+module
+
+public meta import LeanSearchClient.Syntax
+
+public meta section
 
 /-!
 # LeanStateSearch Examples
