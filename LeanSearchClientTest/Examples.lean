@@ -24,8 +24,8 @@ set_option leansearch.queries 1
 
 /--
 info: From: Nat.le_of_succ_le_succ (type: ∀ {n m : Nat}, LE.le n.succ m.succ → LE.le n m)
-  • apply Nat.le_of_succ_le_succ
-  • have : ∀ {n m : Nat}, LE.le n.succ m.succ → LE.le n m := Nat.le_of_succ_le_succ
+• apply Nat.le_of_succ_le_succ
+• have : ∀ {n m : Nat}, LE.le n.succ m.succ → LE.le n m := Nat.le_of_succ_le_succ
 ---
 warning: declaration uses 'sorry'
 -/
@@ -67,8 +67,8 @@ set_option leansearch.queries 1
 
 /--
 info: From: Nat.le_of_succ_le_succ (type: ∀ {n m : Nat}, LE.le n.succ m.succ → LE.le n m)
-  • apply Nat.le_of_succ_le_succ
-  • have : ∀ {n m : Nat}, LE.le n.succ m.succ → LE.le n m := Nat.le_of_succ_le_succ
+• apply Nat.le_of_succ_le_succ
+• have : ∀ {n m : Nat}, LE.le n.succ m.succ → LE.le n m := Nat.le_of_succ_le_succ
 ---
 warning: declaration uses 'sorry'
 -/
