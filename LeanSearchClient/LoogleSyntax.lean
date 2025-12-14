@@ -53,7 +53,7 @@ initialize loogleCache :
 
 def getLoogleQueryJson (s : String) (num_results : Nat := 6) :
   CoreM <| LoogleResult:= do
-  let s := s.splitOn "/-" |>.getD 0 s |>.trim
+  let s := s.splitOn "/-" |>.getD 0 s |>.trimAscii.toString
   let s := s.replace "\n" " "
   let cache ← loogleCache.get
   match cache.get? (s, num_results) with
@@ -61,7 +61,7 @@ def getLoogleQueryJson (s : String) (num_results : Nat := 6) :
   | none => do
     let apiUrl := (← IO.getEnv "LEANSEARCHCLIENT_LOOGLE_API_URL").getD "https://loogle.lean-lang.org/json"
     let s' := System.Uri.escapeUri s
-    if s.trim == "" then
+    if s.trimAscii.toString == "" then
       return LoogleResult.empty
     let q := apiUrl ++ s!"?q={s'}"
     let out ← IO.Process.output {cmd := "curl", args := #["-X", "GET", "--user-agent", ← useragent,  q]}
