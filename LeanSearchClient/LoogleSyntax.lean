@@ -136,7 +136,7 @@ will find tsum_lt_tsum even though the hypothesis f i < g i is not the last.
 
 If you pass more than one such search filter, separated by commas Loogle will return lemmas which match all of them. The search
 🔍 Real.sin, \"two\", tsum, _ * _, _ ^ _, |- _ < _ → _
-woould find all lemmas which mention the constants Real.sin and tsum, have \"two\" as a substring of the lemma name, include a product and a power somewhere in the type, and have a hypothesis of the form _ < _ (if there were any such lemmas). Metavariables (?a) are assigned independently in each filter."
+would find all lemmas which mention the constants Real.sin and tsum, have \"two\" as a substring of the lemma name, include a product and a power somewhere in the type, and have a hypothesis of the form _ < _ (if there were any such lemmas). Metavariables (?a) are assigned independently in each filter."
 
 open Lean.Parser
 def unicode_turnstile := nonReservedSymbol "⊢ "
@@ -201,7 +201,7 @@ will find tsum_lt_tsum even though the hypothesis f i < g i is not the last.
 
 If you pass more than one such search filter, separated by commas Loogle will return lemmas which match all of them. The search
 🔍 Real.sin, \"two\", tsum, _ * _, _ ^ _, |- _ < _ → _
-woould find all lemmas which mention the constants Real.sin and tsum, have \"two\" as a substring of the lemma name, include a product and a power somewhere in the type, and have a hypothesis of the form _ < _ (if there were any such lemmas). Metavariables (?a) are assigned independently in each filter.
+would find all lemmas which mention the constants Real.sin and tsum, have \"two\" as a substring of the lemma name, include a product and a power somewhere in the type, and have a hypothesis of the form _ < _ (if there were any such lemmas). Metavariables (?a) are assigned independently in each filter.
 
 You can modify the Loogle server URL by setting the `LEANSEARCHCLIENT_LOOGLE_API_URL` environment variable.
 -/
