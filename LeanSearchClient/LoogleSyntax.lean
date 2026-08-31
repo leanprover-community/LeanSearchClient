@@ -64,7 +64,7 @@ def getLoogleQueryJson (s : String) (num_results : Nat := 6) :
     if s.trimAscii.toString == "" then
       return LoogleResult.empty
     let q := apiUrl ++ s!"?q={s'}"
-    let out ← IO.Process.output {cmd := "curl", args := #["-X", "GET", "--user-agent", ← useragent,  q]}
+    let out ← IO.Process.output {cmd := "curl", args := #["--max-time", "30", "-X", "GET", "--user-agent", ← useragent,  q]}
     match Json.parse out.stdout with
     | Except.error _ =>
       IO.throwServerError s!"Could not contact Loogle server"
