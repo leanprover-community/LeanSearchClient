@@ -315,9 +315,9 @@ example := #search "If a natural number n is less than m, then the successor of 
 example : 3 ≤ 5 := by
   #search "If a natural number n is less than m, then the successor of n is less than the successor of m."
   sorry
+```
 
 In tactic mode, if the query string is not supplied, then [LeanStateSearch](https://premise-search.com) is queried based on the goal state.
-```
  -/
 syntax (name := search_cmd) "#search" (str)? : command
 @[command_elab search_cmd] def searchCommandImpl : CommandElab :=
