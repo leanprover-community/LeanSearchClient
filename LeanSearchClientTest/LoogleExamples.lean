@@ -42,10 +42,21 @@ example : 3 ≤ 5 := by
 -- comment
 #loogle ?a * _ < ?a * _ ↔ _
 
+-- The two queries below differ only in the comment that follows them; they must
+-- produce the same message (see issue #8).
+
 /--
 info: Loogle Search Results
-  • #check Option.get! --  {α : Type u} [Inhabited α] : Option α → α
-    Extracts the value from an `Option`, panicking on `none`.
+  [apply] #check Option.get! --  {α : Type u} [Inhabited α] : Option α → α
+  Extracts the value from an `Option`, panicking on `none`.
+-/
+#guard_msgs in
+  #loogle Option ?a → ?a, "get!"
+
+/--
+info: Loogle Search Results
+  [apply] #check Option.get! --  {α : Type u} [Inhabited α] : Option α → α
+  Extracts the value from an `Option`, panicking on `none`.
 -/
 #guard_msgs in
   #loogle Option ?a → ?a, "get!"

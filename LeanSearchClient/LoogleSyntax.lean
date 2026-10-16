@@ -53,8 +53,6 @@ initialize loogleCache :
 
 def getLoogleQueryJson (s : String) (num_results : Nat := 6) :
   CoreM <| LoogleResult:= do
-  let s := s.splitOn "/-" |>.getD 0 s |>.trimAscii.toString
-  let s := s.replace "\n" " "
   let cache ← loogleCache.get
   match cache.get? (s, num_results) with
   | some r => return r
@@ -152,6 +150,26 @@ syntax loogle_filter := (turnstyle term) <|> term
 /-- The argument to `#find`, a list of filters -/
 syntax loogle_filters := loogle_filter,*
 
+/--
+Pretty-print `loogle_filters` syntax as the query string to send to the Loogle server.
+
+The formatter's comment preservation copies comments contained in the trailing
+whitespace of the *last* token of `args` into the output, so a comment written
+after a `#loogle` command — as in
+
+```lean
+#loogle Option ?a → ?a, "get!" -- get! from an Option
+```
+
+would otherwise be sent to Loogle as part of the query (see issue #8). Clearing the
+trailing source information before pretty-printing prevents this. Comments *within*
+the query are already dropped by the formatter, string literals are unaffected, and
+the query is collapsed onto a single line.
+-/
+def ppLoogleQuery (args : TSyntax ``loogle_filters) : CoreM String := do
+  let args := args.raw.updateTrailing "".toRawSubstring
+  return (← PrettyPrinter.ppCategory ``loogle_filters args).pretty |>.replace "\n" " "
+
 open Command
 /--
 Search [Loogle](https://loogle.lean-lang.org/json) from within Lean. This can be used as a command, term or tactic as in the following examples. In the case of a tactic, only valid tactics are displayed.
@@ -210,7 +228,7 @@ syntax (name := loogle_cmd) "#loogle" loogle_filters  : command
   Command.liftTermElabM do
   match stx with
   | `(command| #loogle $args:loogle_filters) =>
-    let s := (← PrettyPrinter.ppCategory ``loogle_filters args).pretty
+    let s ← ppLoogleQuery args
     let result ← getLoogleQueryJson s
     match result with
     | LoogleResult.empty =>
@@ -246,7 +264,7 @@ syntax (name := loogle_term) "#loogle" loogle_filters  : term
     fun stx expectedType? => do
   match stx with
   | `(#loogle $args) =>
-    let s := (← PrettyPrinter.ppCategory ``loogle_filters args).pretty
+    let s ← ppLoogleQuery args
     let result ← getLoogleQueryJson s
     match result with
     | LoogleResult.empty =>
@@ -281,7 +299,7 @@ syntax (name := loogle_tactic)
     fun stx => do
   match stx with
   | `(tactic|#loogle $args) =>
-    let s := (← PrettyPrinter.ppCategory ``loogle_filters args).pretty
+    let s ← ppLoogleQuery args
     let result ← getLoogleQueryJson s
     match result with
     | LoogleResult.empty =>
