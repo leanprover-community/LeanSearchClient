@@ -53,7 +53,7 @@ def getLeanSearchQueryJson (s : String) (num_results : Nat := 6) : CoreM <| Arra
     let apiUrl := (← IO.getEnv "LEANSEARCHCLIENT_LEANSEARCH_API_URL").getD "https://leansearch.net/search"
     -- let q := apiUrl ++ s!"?query={s'}&num_results={num_results}"
     let js := Json.mkObj [("query", Json.arr #[toJson s]), ("num_results", num_results)]
-    let out ← IO.Process.output {cmd := "curl", args := #["-X", "POST", apiUrl, "--user-agent", ← useragent, "-H", "accept: application/json", "-H", "Content-Type: application/json", "--data", js.pretty]}
+    let out ← IO.Process.output {cmd := "curl", args := #["--max-time", "30", "-X", "POST", apiUrl, "--user-agent", ← useragent, "-H", "accept: application/json", "-H", "Content-Type: application/json", "--data", js.pretty]}
     let js ← match Json.parse out.stdout with
       | Except.ok js => pure js
       | Except.error e => IO.throwServerError s!"Could not parse response from LeanSearch server, error: {e}"
@@ -75,7 +75,7 @@ def getStateSearchQueryJson (s : String) (num_results : Nat := 6) (rev : String)
     let apiUrl := (← IO.getEnv "LEANSEARCHCLIENT_LEANSTATESEARCH_API_URL").getD "https://premise-search.com/api/search"
     let s' := System.Uri.escapeUri s
     let q := apiUrl ++ s!"?query={s'}&results={num_results}&rev={rev}"
-    let out ← IO.Process.output {cmd := "curl", args := #["-X", "GET", "--user-agent", ← useragent, q]}
+    let out ← IO.Process.output {cmd := "curl", args := #["--max-time", "30", "-X", "GET", "--user-agent", ← useragent, q]}
     let js ← match Json.parse out.stdout |>.toOption with
       | some js => pure js
       | none => IO.throwServerError s!"Could not contact LeanStateSearch server"
