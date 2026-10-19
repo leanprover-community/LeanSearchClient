@@ -60,11 +60,11 @@ def getLoogleQueryJson (s : String) (num_results : Nat := 6) :
   | some r => return r
   | none => do
     let apiUrl := (← IO.getEnv "LEANSEARCHCLIENT_LOOGLE_API_URL").getD "https://loogle.lean-lang.org/json"
-    let s' := System.Uri.escapeUri s
+    let s' := escapeQueryParam s
     if s.trimAscii.toString == "" then
       return LoogleResult.empty
     let q := apiUrl ++ s!"?q={s'}"
-    let out ← IO.Process.output {cmd := "curl", args := #["-X", "GET", "--user-agent", ← useragent,  q]}
+    let out ← IO.Process.output {cmd := "curl", args := #["-X", "GET", "--globoff", "--user-agent", ← useragent,  q]}
     match Json.parse out.stdout with
     | Except.error _ =>
       IO.throwServerError s!"Could not contact Loogle server"
