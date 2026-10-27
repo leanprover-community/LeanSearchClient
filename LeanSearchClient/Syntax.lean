@@ -73,9 +73,9 @@ def getStateSearchQueryJson (s : String) (num_results : Nat := 6) (rev : String)
   | .some jsArr => return jsArr
   | none => do
     let apiUrl := (← IO.getEnv "LEANSEARCHCLIENT_LEANSTATESEARCH_API_URL").getD "https://premise-search.com/api/search"
-    let s' := System.Uri.escapeUri s
+    let s' := escapeQueryParam s
     let q := apiUrl ++ s!"?query={s'}&results={num_results}&rev={rev}"
-    let out ← IO.Process.output {cmd := "curl", args := #["-X", "GET", "--user-agent", ← useragent, q]}
+    let out ← IO.Process.output {cmd := "curl", args := #["-X", "GET", "--globoff", "--user-agent", ← useragent, q]}
     let js ← match Json.parse out.stdout |>.toOption with
       | some js => pure js
       | none => IO.throwServerError s!"Could not contact LeanStateSearch server"
